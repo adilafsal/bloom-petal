@@ -57,9 +57,9 @@ export default function AdminOrders() {
       if (response.status === 401 || response.status === 403) {
         const body = await response.json().catch(() => null) as { statusMessage?: string; message?: string } | null;
         const message = body?.statusMessage || body?.message || "Your administrator session could not be verified.";
-        setOrders([]);
-        if (response.status === 401) setError(message);
-        else { setAuthFailure(message); setAuthorized(false); }
+        setOrders([]); setTotal(0); setPendingCount(0); setSelected(null); setAuthorized(false);
+        if (response.status === 401) navigate("/auth/sign-in", { replace: true });
+        else { setAuthFailure(message); setError(""); }
         return;
       }
       if (!response.ok) {

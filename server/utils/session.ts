@@ -50,7 +50,7 @@ export async function getSessionFromCookie(cookieHeader: string | null, isHttp: 
   if (!cookie) return null;
   let response: Response;
   try {
-    response = await fetch(`${neonAuthBaseUrl}/get-session`, { headers: { cookie } });
+    response = await fetch(`${neonAuthBaseUrl}/get-session?disableCookieCache=true`, { headers: { cookie }, cache: "no-store" });
   } catch {
     throw new NeonAuthUnavailableError();
   }

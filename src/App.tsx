@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
+import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
@@ -45,8 +46,9 @@ const App = () => (
               <Route path="/delivery" element={<Delivery />} />
               <Route path="/track" element={<Tracking />} />
               <Route path="/admin" element={<Navigate to="/admin/orders" replace />} />
-              <Route path="/admin/orders" element={<AdminOrders />} />
-              <Route path="/admin/delivery" element={<AdminDelivery />} />
+              <Route path="/admin/login" element={<Navigate to="/auth/sign-in" replace />} />
+              <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+              <Route path="/admin/delivery" element={<AdminRoute><AdminDelivery /></AdminRoute>} />
               <Route path="/auth/sign-up" element={<SignUpPage />} />
               <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
               <Route path="/auth/:path" element={<AuthPage />} />

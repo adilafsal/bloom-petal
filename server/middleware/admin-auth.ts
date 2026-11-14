@@ -4,7 +4,7 @@ import { getSessionFromCookie, NeonAuthUnavailableError, normalizeAuthCookieHead
 
 export default defineHandler(async event => {
   const url = getRequestURL(event);
-  if (!url.pathname.startsWith("/api/admin/")) return;
+  if (url.pathname !== "/api/admin" && !url.pathname.startsWith("/api/admin/")) return;
   const isHttp = url.protocol === "http:";
   const cookieHeader = getRequestHeader(event, "cookie") ?? null;
   if (!cookieHeader || !normalizeAuthCookieHeader(cookieHeader, isHttp)) {
