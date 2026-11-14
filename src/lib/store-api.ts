@@ -1,8 +1,15 @@
 import type { Product, Item } from "../store";
 
-export type StoreProduct = Product & { available: boolean };
+export type StoreProduct = Product & {
+  available: boolean;
+  regularPrice: number;
+  salePrice: number | null;
+  stockQuantity: number | null;
+  categoryId: string | null;
+};
+export type StoreCategory = { id: string; name: string; description: string | null; imageUrl: string | null; productCount: number };
 export type CustomBouquet = { flowers: string[]; color: string; size: string; wrapping: string; extras: string[]; giftMessage: string };
-export type SubmittedItem = { productId: number; quantity: number; size: string; customization: Record<string, unknown> } | { quantity: number; size: string; customBouquet: CustomBouquet };
+export type SubmittedItem = { productId: string | number; quantity: number; size: string; customization: Record<string, unknown> } | { quantity: number; size: string; customBouquet: CustomBouquet };
 export type PlaceOrderInput = {
   customer: { fullName: string; email: string; phone: string };
   items: SubmittedItem[];
@@ -12,10 +19,51 @@ export type PlaceOrderInput = {
 };
 export type PlaceOrderResult = { reference: string; total: number; checkoutUrl?: string };
 
+type ProductApiRecord = {
+  id: string;
+  name: string;
+  short_description: string;
+  description: string;
+  price: number;
+  regular_price: number;
+  sale_price: number | null;
+  category_id: string | null;
+  category: string;
+  image: string;
+  available: boolean;
+  stock_quantity: number | null;
+  featured: boolean;
+};
+
+type CategoryApiRecord = { id: string; name: string; description: string | null; image_url: string | null; product_count: number };
+
 export async function loadProducts(): Promise<StoreProduct[]> {
   const response = await fetch("/api/products");
   if (!response.ok) throw new Error("We couldn't load the flower collection. Please try again.");
-  return response.json();
+  const records = await response.json() as ProductApiRecord[];
+  return records.map(product => ({
+    id: product.id,
+    name: product.name,
+    shortDescription: product.short_description,
+    description: product.description,
+    price: product.price,
+    regularPrice: product.regular_price,
+    salePrice: product.sale_price,
+    categoryId: product.category_id ?? undefined,
+    category: product.category || "Seasonal Flowers",
+    image: product.image,
+    available: product.available,
+    stockQuantity: product.stock_quantity,
+    featured: product.featured,
+    tag: product.stock_quantity === 0 ? "Out of stock" : product.featured ? "Featured" : undefined,
+  }));
+}
+
+export async function loadCategories(): Promise<StoreCategory[]> {
+  const response = await fetch("/api/categories");
+  if (!response.ok) throw new Error("We couldn't load flower categories. Please try again.");
+  const records = await response.json() as CategoryApiRecord[];
+  return records.map(category => ({ id: category.id, name: category.name, description: category.description, imageUrl: category.image_url, productCount: category.product_count }));
 }
 
 export async function submitOrder(order: PlaceOrderInput): Promise<PlaceOrderResult> {

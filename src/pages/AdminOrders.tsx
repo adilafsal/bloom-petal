@@ -34,6 +34,8 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [authFailure, setAuthFailure] = useState("");
+  const [verificationNotice, setVerificationNotice] = useState("");
+  const [resendingVerification, setResendingVerification] = useState(false);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [updating, setUpdating] = useState(false);
   const [newOrderCount, setNewOrderCount] = useState(0);
@@ -100,6 +102,20 @@ export default function AdminOrders() {
   const shownTo = Math.min(page * 20, total);
   const stats = useMemo(() => ({ sales: orders.reduce((sum, order) => sum + order.total, 0) }), [orders]);
 
+  async function resendVerificationEmail() {
+    setResendingVerification(true);
+    setVerificationNotice("");
+    try {
+      const result = await authClient.sendVerificationEmail({ email: user!.email, callbackURL: `${window.location.origin}/auth/sign-in` });
+      if (result.error) throw new Error(result.error.message || "The verification email could not be sent.");
+      setVerificationNotice("Verification email sent. Check your inbox and spam folder, then sign in again.");
+    } catch (failure) {
+      setVerificationNotice(failure instanceof Error ? failure.message : "The verification email could not be sent. Please try again.");
+    } finally {
+      setResendingVerification(false);
+    }
+  }
+
   async function updateStatus(order: Order, nextStatus: string) {
     if (nextStatus === "Cancelled" && !window.confirm(`Cancel order ${order.order_number}? This will be recorded in the order status.`)) return;
     setUpdating(true);
@@ -117,7 +133,7 @@ export default function AdminOrders() {
 
   if (isPending || (!user && !authorized)) return <main className="admin-orders-state"><LoaderCircle className="spin"/><p>Checking administrator session…</p></main>;
   if (!user) return null;
-  if (authorized === false) return <main className="admin-orders-state"><span className="eyebrow">ACCESS RESTRICTED</span><h1>Admin access <em>is unavailable.</em></h1><p>{authFailure || "Customer order data remains protected."}</p><button className="button button-outline" onClick={() => authClient.signOut({})}>Sign out <LogOut size={15}/></button></main>;
+  if (authorized === false) return <main className="admin-orders-state"><span className="eyebrow">ACCESS RESTRICTED</span><h1>Admin access <em>is unavailable.</em></h1><p>{authFailure || "Customer order data remains protected."}</p>{authFailure.toLowerCase().includes("verify this email")&&<><button className="button button-dark" disabled={resendingVerification} onClick={() => void resendVerificationEmail()}>{resendingVerification?"Sending verification…":"Resend verification email"}</button>{verificationNotice&&<p role="status">{verificationNotice}</p>}</>}<button className="button button-outline" onClick={() => authClient.signOut({})}>Sign out <LogOut size={15}/></button></main>;
 
   return <div className="admin-app"><aside className={`admin-sidebar ${sidebarOpen?"open":""}`}><Link to="/" className="admin-brand"><Flower2 size={21}/><span>Bloom <i>&</i> Petal</span></Link><div className="admin-sidebar-caption">SHOP MANAGEMENT</div><nav className="admin-sidebar-nav"><Link to="/admin" className="admin-nav-link"><LayoutDashboard size={16}/> Dashboard</Link><Link to="/admin/orders" className="admin-nav-link active"><Package size={16}/> Orders{pendingCount>0&&<span className="admin-nav-badge">{pendingCount}</span>}{newOrderCount>0&&<span className="admin-new-dot" title={`${newOrderCount} new orders`}/>}</Link><span className="admin-nav-link disabled"><Flower2 size={16}/> Products <small>Later</small></span><span className="admin-nav-link disabled"><Tags size={16}/> Categories <small>Later</small></span><span className="admin-nav-link disabled"><Users size={16}/> Customers <small>Later</small></span><span className="admin-nav-link disabled"><Settings size={16}/> Store Settings <small>Later</small></span></nav><div className="admin-sidebar-bottom"><div className="admin-user-info"><span className="admin-user-avatar">{(user.name||user.email).slice(0,1).toUpperCase()}</span><span><strong>{user.name||"Store owner"}</strong><small>{user.email}</small></span></div><button className="admin-logout" onClick={() => authClient.signOut({})}><LogOut size={15}/> Logout</button></div></aside>
     {sidebarOpen&&<button className="admin-mobile-scrim" onClick={()=>setSidebarOpen(false)} aria-label="Close navigation"/>}

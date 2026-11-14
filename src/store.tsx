@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-export type Product={id:number;name:string;price:number;category:string;description:string;image:string;tag?:string};
+export type Product={id:string|number;name:string;price:number;category:string;description:string;image:string;tag?:string;available?:boolean;stockQuantity?:number|null;featured?:boolean;regularPrice?:number;salePrice?:number|null;shortDescription?:string;categoryId?:string};
 export type Item={product:Product;quantity:number;size:string;custom?:string};
 export const inventory:Product[]=[
 {id:1,name:"The Blush Edit",price:149,category:"Roses",description:"Garden roses and delicate seasonal stems, gathered in soft blush tones.",image:"https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=800&q=85",tag:"Bestseller"},

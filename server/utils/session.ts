@@ -31,6 +31,9 @@ export function normalizeAuthCookieHeader(cookieHeader: string, isHttp: boolean)
   return normalized.join("; ");
 }
 
+type AuthUserResponse = { id?: unknown; name?: unknown; email?: unknown; emailVerified?: unknown; email_verified?: unknown };
+type AuthSessionResponse = { user?: AuthUserResponse } | null;
+
 export type Session = { user: { id: string; name: string; email: string; emailVerified: boolean } } | null;
 
 export class NeonAuthUnavailableError extends Error {
@@ -53,6 +56,15 @@ export async function getSessionFromCookie(cookieHeader: string | null, isHttp: 
   }
   if (response.status === 401 || response.status === 403) return null;
   if (!response.ok) throw new NeonAuthUnavailableError();
-  const session = await response.json() as Session;
-  return session?.user ? session : null;
+  const session = await response.json() as AuthSessionResponse;
+  const user = session?.user;
+  if (typeof user?.id !== "string" || typeof user.email !== "string") return null;
+  return {
+    user: {
+      id: user.id,
+      name: typeof user.name === "string" ? user.name : "",
+      email: user.email,
+      emailVerified: user.emailVerified === true || user.email_verified === true,
+    },
+  };
 }

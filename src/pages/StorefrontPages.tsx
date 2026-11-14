@@ -3,23 +3,38 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { ArrowRight, Check, Minus, Plus } from "lucide-react";
 import { Layout, ProductGrid } from "../storefront";
 import { money, useStore } from "../store";
-import { giftMessageForOrder, loadProducts, submitOrder, toServerItems, type StoreProduct } from "../lib/store-api";
+import { giftMessageForOrder, loadCategories, loadProducts, submitOrder, toServerItems, type StoreProduct } from "../lib/store-api";
 
-const categories = ["All flowers", "Roses", "Tulips", "Lilies", "Sunflowers", "Mixed Bouquets", "Flower Boxes", "Seasonal Flowers"];
+const allFlowersCategory = "All flowers";
 
 export function NeonShop() {
   const [products, setProducts] = useState<StoreProduct[]>([]);
-  const [category, setCategory] = useState("All flowers");
+  const [categories, setCategories] = useState<string[]>([allFlowersCategory]);
+  const [category, setCategory] = useState(allFlowersCategory);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("Featured");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  useEffect(() => { loadProducts().then(setProducts).catch(e => setError(e.message)).finally(() => setLoading(false)); }, []);
-  let visible = products.filter(p => (category === "All flowers" || p.category === category) && p.name.toLowerCase().includes(search.toLowerCase()));
+  const [params] = useSearchParams();
+  useEffect(() => {
+    const requestedCategory = params.get("category");
+    if (requestedCategory) setCategory(requestedCategory);
+    setSearch(params.get("q") || "");
+  }, [params]);
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([loadProducts(), loadCategories()]).then(([items, categoryRows]) => {
+      if (!mounted) return;
+      setProducts(items);
+      setCategories([allFlowersCategory, ...categoryRows.map(item => item.name)]);
+    }).catch(error => { if (mounted) setError(error instanceof Error ? error.message : "The flower collection is unavailable."); }).finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
+  }, []);
+  let visible = products.filter(product => (category === allFlowersCategory || product.category === category) && product.name.toLowerCase().includes(search.toLowerCase()));
   if (sort === "Price: Low to High") visible = [...visible].sort((a,b) => a.price-b.price);
   if (sort === "Price: High to Low") visible = [...visible].sort((a,b) => b.price-a.price);
   if (sort === "New Arrivals") visible = [...visible].reverse();
-  return <Layout><main className="catalog-page"><div className="catalog-hero"><span className="eyebrow">ARRANGED WITH CARE, ALWAYS</span><h1>Our Flower <em>Collection</em></h1><p>Find the flowers for the words you can't quite find. Each one arranged fresh, just for you.</p></div><div className="catalog-tools"><div className="filter-tabs">{categories.map(c=><button className={category===c?"selected":""} key={c} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="catalog-controls"><label><input placeholder="Search flowers" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><select value={sort} onChange={e=>setSort(e.target.value)}><option>Featured</option><option>Price: Low to High</option><option>Price: High to Low</option><option>New Arrivals</option></select></label></div></div>{loading?<p className="catalog-count">Loading the flower collection…</p>:error?<div className="no-products"><h2>Flowers are temporarily unavailable.</h2><p>{error}</p></div>:<><p className="catalog-count">{visible.length} arrangements, made with love</p>{visible.length?<ProductGrid products={visible}/>:<div className="no-products"><h2>No flowers found just yet.</h2><p>Try another search or category.</p></div>}</>}<div className="builder-promo"><span className="eyebrow">SOMETHING A LITTLE MORE PERSONAL</span><h2>Make it yours.</h2><p>Choose the flowers, colours and finishing touches.</p><Link className="button button-dark" to="/builder">Build a bouquet <ArrowRight size={16}/></Link></div></main></Layout>;
+  return <Layout><main className="catalog-page"><div className="catalog-hero"><span className="eyebrow">ARRANGED WITH CARE, ALWAYS</span><h1>Our Flower <em>Collection</em></h1><p>Find the flowers for the words you can't quite find. Each one arranged fresh, just for you.</p></div><div className="catalog-tools"><div className="filter-tabs">{categories.map(item=><button className={category===item?"selected":""} key={item} onClick={()=>setCategory(item)}>{item}</button>)}</div><div className="catalog-controls"><label><input aria-label="Search flowers" placeholder="Search flowers" value={search} onChange={event=>setSearch(event.target.value)}/></label><label><select aria-label="Sort flowers" value={sort} onChange={event=>setSort(event.target.value)}><option>Featured</option><option>Price: Low to High</option><option>Price: High to Low</option><option>New Arrivals</option></select></label></div></div>{loading?<p className="catalog-count">Loading the flower collection…</p>:error?<div className="no-products"><h2>Flowers are temporarily unavailable.</h2><p>{error}</p></div>:<><p className="catalog-count">{visible.length} arrangements, made with love</p>{visible.length?<ProductGrid products={visible}/>:<div className="no-products"><h2>No flowers found just yet.</h2><p>Try another search or category.</p></div>}</>}<div className="builder-promo"><span className="eyebrow">SOMETHING A LITTLE MORE PERSONAL</span><h2>Make it yours.</h2><p>Choose the flowers, colours and finishing touches.</p><Link className="button button-dark" to="/builder">Build a bouquet <ArrowRight size={16}/></Link></div></main></Layout>;
 }
 
 export function NeonProductDetail() {
@@ -30,11 +45,12 @@ export function NeonProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const { add } = useStore();
-  useEffect(() => { loadProducts().then(items => setProduct(items.find(p => p.id === Number(id)) || null)).catch(e => setError(e.message)); }, [id]);
+  useEffect(() => { loadProducts().then(items => setProduct(items.find(item => String(item.id) === id) || null)).catch(e => setError(e.message)); }, [id]);
   if (error) return <Layout><div className="empty-page"><h1>Flower details are unavailable.</h1><p>{error}</p><Link to="/shop">Back to flowers</Link></div></Layout>;
   if (!product) return <Layout><div className="empty-page"><h1>Loading flower details…</h1></div></Layout>;
   const price = size === "Small" ? Math.max(89, product.price - 50) : size === "Large" ? product.price + 50 : product.price;
-  return <Layout><main className="detail-page"><div className="breadcrumbs"><Link to="/shop">Flowers</Link> / {product.category} / {product.name}</div><div className="detail-grid"><div className="detail-image"><img src={product.image} alt={`${product.name} flower arrangement`}/><span>Arranged fresh, just for you</span></div><div className="detail-copy"><span className="eyebrow">{product.category.toUpperCase()} · MADE WITH CARE</span><h1>{product.name}</h1><div className="detail-price">{money(price)}</div><p>{product.description}</p><h3>Choose your size</h3><div className="size-options">{["Small","Medium","Large"].map(s=><button className={size===s?"chosen":""} key={s} onClick={()=>setSize(s)}><span>{s}</span><small>{money(s==="Small"?Math.max(89,product.price-50):s==="Large"?product.price+50:product.price)}</small></button>)}</div><label className="field-label">Gift message (optional)<textarea value={note} maxLength={180} onChange={e=>setNote(e.target.value)}/></label><div className="detail-purchase"><div className="quantity-select"><button onClick={()=>setQuantity(Math.max(1,quantity-1))}><Minus size={14}/></button><span>{quantity}</span><button onClick={()=>setQuantity(quantity+1)}><Plus size={14}/></button></div><button className="button button-dark" onClick={()=>{for(let i=0;i<quantity;i++) add({...product,price},size,note||undefined)}}>Add to your bag <ArrowRight size={15}/></button></div></div></div></main></Layout>;
+  const outOfStock = product.stockQuantity === 0;
+  return <Layout><main className="detail-page"><div className="breadcrumbs"><Link to="/shop">Flowers</Link> / {product.category} / {product.name}</div><div className="detail-grid"><div className="detail-image"><img src={product.image} alt={`${product.name} flower arrangement`} onError={event=>event.currentTarget.src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=800&q=85"}/><span>Arranged fresh, just for you</span></div><div className="detail-copy"><span className="eyebrow">{product.category.toUpperCase()} · MADE WITH CARE</span><h1>{product.name}</h1><div className="detail-price">{money(price)}{product.regularPrice&&product.regularPrice>product.price&&size==="Medium"&&<del>{money(product.regularPrice)}</del>}</div><p>{product.description}</p>{product.stockQuantity!==null&&<p className="stock-note">{outOfStock?"Currently out of stock":`${product.stockQuantity} available`}</p>}<h3>Choose your size</h3><div className="size-options">{["Small","Medium","Large"].map(selectedSize=><button className={size===selectedSize?"chosen":""} key={selectedSize} onClick={()=>setSize(selectedSize)}><span>{selectedSize}</span><small>{money(selectedSize==="Small"?Math.max(89,product.price-50):selectedSize==="Large"?product.price+50:product.price)}</small></button>)}</div><label className="field-label">Gift message (optional)<textarea value={note} maxLength={180} onChange={event=>setNote(event.target.value)}/></label><div className="detail-purchase"><div className="quantity-select"><button aria-label="Decrease quantity" onClick={()=>setQuantity(Math.max(1,quantity-1))}><Minus size={14}/></button><span>{quantity}</span><button aria-label="Increase quantity" disabled={outOfStock||product.stockQuantity!==null&&quantity>=product.stockQuantity} onClick={()=>setQuantity(Math.min(product.stockQuantity??99,quantity+1))}><Plus size={14}/></button></div><button className="button button-dark" disabled={outOfStock} onClick={()=>{for(let index=0;index<quantity;index++) add({...product,price},size,note||undefined)}}>{outOfStock?"Out of stock":"Add to your bag"} {!outOfStock&&<ArrowRight size={15}/>}</button></div></div></div></main></Layout>;
 }
 
 export function NeonCheckout() {
