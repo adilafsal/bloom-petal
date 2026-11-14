@@ -13,7 +13,7 @@ export type SubmittedItem = { productId: string; quantity: number; size: string;
 export type PlaceOrderInput = {
   customer: { fullName: string; email: string; phone: string };
   items: SubmittedItem[];
-  delivery: { address: string; city: string; area: string; building: string; apartment: string; date: string; time: string; zoneId: string; slotId: string; instructions: string };
+  delivery: { savedAddressId?: string; address: string; city: string; area: string; building: string; apartment: string; date: string; time: string; zoneId: string; slotId: string; instructions: string };
   giftMessage: string;
   paymentMethod: "cash_on_delivery" | "online";
 };

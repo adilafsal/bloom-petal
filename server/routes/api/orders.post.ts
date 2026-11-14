@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { defineHandler } from "nitro";
-import { createError, readBody } from "nitro/h3";
+import { createError, getRequestHeader, getRequestURL, readBody } from "nitro/h3";
 import { sql } from "../../utils/db";
+import { getSessionFromCookie } from "../../utils/session";
 import { notifyOrderByReference } from "../../utils/notify-order-by-reference";
 import { createStripeCheckout, onlinePaymentsEnabled } from "../../utils/payments";
 
@@ -13,7 +14,7 @@ const extraPrices: Record<string, number> = { "Greeting card": 12, "Gift box": 3
 const sizePrices: Record<string, number> = { Small: 139, Medium: 189, Large: 259 };
 type CustomBouquet = { flowers?: string[]; color?: string; size?: string; wrapping?: string; extras?: string[]; giftMessage?: string };
 type OrderItem = { productId?: string | number; quantity?: number; size?: string; customization?: Record<string, unknown>; customBouquet?: CustomBouquet };
-type OrderInput = { customer?: { fullName?: string; email?: string; phone?: string }; items?: OrderItem[]; delivery?: { address?: string; city?: string; area?: string; building?: string; apartment?: string; date?: string; time?: string; zoneId?: string; slotId?: string; instructions?: string }; giftMessage?: string; paymentMethod?: string };
+type OrderInput = { customer?: { fullName?: string; email?: string; phone?: string }; items?: OrderItem[]; delivery?: { savedAddressId?: string; address?: string; city?: string; area?: string; building?: string; apartment?: string; date?: string; time?: string; zoneId?: string; slotId?: string; instructions?: string }; giftMessage?: string; paymentMethod?: string };
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function priceCustomBouquet(item: OrderItem) {
@@ -27,7 +28,27 @@ function priceCustomBouquet(item: OrderItem) {
 
 export default defineHandler(async event => {
   const body = await readBody<OrderInput>(event);
-  const customer = body?.customer, delivery = body?.delivery, items = body?.items;
+  const customer = body?.customer ?? {} as NonNullable<OrderInput["customer"]>, delivery = body?.delivery, items = body?.items;
+  let deliverySnapshot: Record<string, string> | null = null;
+  let authenticatedUserId: string | null = null;
+  if (delivery?.savedAddressId) {
+    if (!uuidPattern.test(delivery.savedAddressId)) throw createError({ statusCode: 400, statusMessage: "Choose a valid saved delivery address." });
+    const session = await getSessionFromCookie(getRequestHeader(event, "cookie") ?? null, getRequestURL(event).protocol === "http:");
+    if (!session?.user || !session.user.emailVerified) throw createError({ statusCode: 401, statusMessage: "Sign in with a verified account to use saved addresses." });
+    authenticatedUserId = session.user.id;
+    const owned = await sql`SELECT a.recipient_name, a.phone, a.label, a.building, a.street, a.area, a.city, a.delivery_instructions FROM customer_addresses a JOIN customers c ON c.id=a.customer_id WHERE a.id=${delivery.savedAddressId}::uuid AND c.auth_user_id=${session.user.id}`;
+    if (!owned.length) throw createError({ statusCode: 403, statusMessage: "That saved address does not belong to your account. Choose another address." });
+    const saved = owned[0];
+    deliverySnapshot = { recipient_name: saved.recipient_name, phone: saved.phone, label: saved.label, address: saved.street, building: saved.building, street: saved.street, area: saved.area, city: saved.city, delivery_instructions: saved.delivery_instructions };
+    delivery.address = saved.street;
+    delivery.city = saved.city;
+    delivery.area = saved.area;
+    delivery.building = saved.building;
+    delivery.instructions = saved.delivery_instructions;
+    customer.fullName = saved.recipient_name;
+    customer.phone = saved.phone;
+    customer.email = session.user.email;
+  }
   if (!customer?.fullName?.trim() || !customer.email?.includes("@") || !customer.phone?.trim()) throw createError({ statusCode: 400, statusMessage: "Valid customer details are required." });
   if (!delivery?.address?.trim() || !delivery.city?.trim() || !delivery.area?.trim() || !delivery.date || !delivery.time) throw createError({ statusCode: 400, statusMessage: "Complete delivery information is required." });
   if (!items?.length || items.length > 40) throw createError({ statusCode: 400, statusMessage: "Your order must contain between 1 and 40 items." });
@@ -71,7 +92,7 @@ export default defineHandler(async event => {
   const freeThreshold=Number(deliverySettings.freeDeliveryThreshold||0);
   const deliveryFee=freeThreshold>0&&computedSubtotal>=freeThreshold?0:Number(zoneRows[0].fee??deliverySettings.defaultDeliveryFee??25);
   const reference = `BP${randomUUID().replaceAll("-", "").toUpperCase()}`;
-  const address = { address: delivery.address.trim(), city: delivery.city.trim(), area: delivery.area.trim(), building: delivery.building?.trim() ?? "", apartment: delivery.apartment?.trim() ?? "" };
+  const address = deliverySnapshot ?? { address: delivery.address.trim(), city: delivery.city.trim(), area: delivery.area.trim(), building: delivery.building?.trim() ?? "", apartment: delivery.apartment?.trim() ?? "", street: delivery.address.trim(), recipient_name: customer.fullName.trim(), phone: customer.phone.trim(), delivery_instructions: delivery.instructions?.trim() ?? "" };
   let rows: Array<{ id: string; reference: string; total: number }>;
   try {
     rows = await sql`
