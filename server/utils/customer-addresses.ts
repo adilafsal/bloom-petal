@@ -5,7 +5,7 @@ import { sql } from "./db";
 
 export async function getAddressOwner(event: H3Event) {
   const session = await getSessionFromCookie(getRequestHeader(event, "cookie") ?? null, getRequestURL(event).protocol === "http:");
-  if (!session?.user || !session.user.emailVerified) throw createError({ statusCode: 401, statusMessage: "Sign in with a verified account to manage saved addresses." });
+  if (!session?.user) throw createError({ statusCode: 401, statusMessage: "Sign in to manage saved addresses." });
   const rows = await sql`
     INSERT INTO customers (full_name, email, phone, auth_user_id)
     VALUES (${session.user.name || session.user.email.split("@")[0]}, ${session.user.email.toLowerCase()}, '', ${session.user.id})

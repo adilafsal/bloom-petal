@@ -34,7 +34,7 @@ export default defineHandler(async event => {
   if (delivery?.savedAddressId) {
     if (!uuidPattern.test(delivery.savedAddressId)) throw createError({ statusCode: 400, statusMessage: "Choose a valid saved delivery address." });
     const session = await getSessionFromCookie(getRequestHeader(event, "cookie") ?? null, getRequestURL(event).protocol === "http:");
-    if (!session?.user || !session.user.emailVerified) throw createError({ statusCode: 401, statusMessage: "Sign in with a verified account to use saved addresses." });
+    if (!session?.user) throw createError({ statusCode: 401, statusMessage: "Sign in to use saved addresses." });
     authenticatedUserId = session.user.id;
     const owned = await sql`SELECT a.recipient_name, a.phone, a.label, a.building, a.street, a.area, a.city, a.delivery_instructions FROM customer_addresses a JOIN customers c ON c.id=a.customer_id WHERE a.id=${delivery.savedAddressId}::uuid AND c.auth_user_id=${session.user.id}`;
     if (!owned.length) throw createError({ statusCode: 403, statusMessage: "That saved address does not belong to your account. Choose another address." });
