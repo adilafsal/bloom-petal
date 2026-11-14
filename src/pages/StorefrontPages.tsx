@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowRight, Check, Minus, Plus } from "lucide-react";
 import { Layout, ProductGrid } from "../storefront";
 import { money, useStore } from "../store";
-import { loadProducts, submitOrder, toServerItems, type StoreProduct } from "../lib/store-api";
+import { giftMessageForOrder, loadProducts, submitOrder, toServerItems, type StoreProduct } from "../lib/store-api";
 
 const categories = ["All flowers", "Roses", "Tulips", "Lilies", "Sunflowers", "Mixed Bouquets", "Flower Boxes", "Seasonal Flowers"];
 
@@ -42,7 +42,10 @@ export function NeonCheckout() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [onlineAvailable, setOnlineAvailable] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cash_on_delivery" | "online">("cash_on_delivery");
   const [form, setForm] = useState({ name:"", email:"", phone:"", address:"", city:"", area:"", building:"", apartment:"", date:"", time:"9am–1pm", message:"" });
+  useEffect(() => { fetch("/api/payment-config").then(response => response.json()).then(result => setOnlineAvailable(Boolean(result.onlinePaymentsEnabled))).catch(() => setOnlineAvailable(false)); }, []);
   const subtotal = cart.reduce((sum,item)=>sum+item.product.price*item.quantity,0);
   const update = (key: keyof typeof form, value: string) => setForm(current=>({...current,[key]:value}));
   async function placeOrder(event: FormEvent) {
@@ -53,10 +56,14 @@ export function NeonCheckout() {
         customer:{fullName:form.name,email:form.email,phone:form.phone},
         items,
         delivery:{address:form.address,city:form.city,area:form.area,building:form.building,apartment:form.apartment,date:form.date,time:form.time},
-        giftMessage:form.message,
-        paymentMethod:"cash_on_delivery",
+        giftMessage:giftMessageForOrder(cart, form.message),
+        paymentMethod,
       });
-      clear(); navigate(`/confirmation/${result.reference}`);
+      clear();
+      if (paymentMethod === "online") {
+        if (!result.checkoutUrl) throw new Error("The payment provider did not return a checkout session. Contact the shop before retrying.");
+        window.location.assign(result.checkoutUrl);
+      } else navigate(`/confirmation/${result.reference}`);
     } catch (e) { setError(e instanceof Error?e.message:"Unable to place your order right now."); }
     finally { setBusy(false); }
   }
@@ -66,5 +73,9 @@ export function NeonCheckout() {
 
 export function NeonConfirmation() {
   const { ref } = useParams();
-  return <Layout><main className="confirmation"><div className="confirm-icon"><Check/></div><span className="eyebrow">ORDER RECEIVED</span><h1>Thank you, <em>lovely.</em></h1><p>Your order has been saved. Our florist will follow up to confirm delivery details and Cash on Delivery.</p><div className="reference-box"><span>ORDER REFERENCE</span><strong>{ref}</strong></div><p className="demo-disclosure">Order storage is connected to the Neon development database. Notifications and payment processing are not configured.</p><Link className="button button-dark" to="/shop">Back to flowers <ArrowRight size={15}/></Link></main></Layout>;
+  const [params] = useSearchParams();
+  const onlinePaid = params.get("payment") === "success";
+  const { clear } = useStore();
+  useEffect(() => { if (onlinePaid) clear(); }, [onlinePaid]);
+  return <Layout><main className="confirmation"><div className="confirm-icon"><Check/></div><span className="eyebrow">ORDER RECEIVED</span><h1>Thank you, <em>lovely.</em></h1><p>{onlinePaid ? "Your secure payment checkout is complete. The payment confirmation is being recorded." : "Your order has been saved. Our florist will follow up to confirm delivery details and Cash on Delivery."}</p><div className="reference-box"><span>ORDER REFERENCE</span><strong>{ref}</strong></div><p className="demo-disclosure">Order saved to Neon. Email/WhatsApp updates are sent only when the shop configures those providers.</p><Link className="button button-dark" to="/shop">Back to flowers <ArrowRight size={15}/></Link></main></Layout>;
 }

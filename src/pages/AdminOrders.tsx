@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, LoaderCircle, LogOut, Search, X } from "lucide-react";
 import { Layout } from "../storefront";
 import { authClient, useAuthSession } from "../lib/auth-client";
@@ -19,6 +19,7 @@ const formatAddress = (address: Order["delivery_address"]) => [address?.address,
 
 export default function AdminOrders() {
   const { data, isPending } = useAuthSession();
+  const navigate = useNavigate();
   const user = data?.user;
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("All orders");
@@ -37,7 +38,8 @@ export default function AdminOrders() {
       if (filter !== "All orders") params.set("status", filter);
       if (search.trim()) params.set("search", search.trim());
       const response = await fetch(`/api/admin/orders?${params}`, { credentials: "same-origin" });
-      if (response.status === 401 || response.status === 403) { setAuthorized(false); setOrders([]); return; }
+      if (response.status === 401) { setOrders([]); navigate("/auth/sign-in", { replace: true }); return; }
+      if (response.status === 403) { setAuthorized(false); setOrders([]); return; }
       if (!response.ok) throw new Error("Couldn't load orders. Please try again.");
       const result = await response.json() as Order[];
       setOrders(result);
@@ -46,13 +48,16 @@ export default function AdminOrders() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load orders.");
     } finally { setLoading(false); }
-  }, [filter, search]);
+  }, [filter, search, navigate]);
 
   useEffect(() => {
     if (!user) return;
     const timer = window.setTimeout(() => { void loadOrders(); }, 220);
     return () => window.clearTimeout(timer);
   }, [user, loadOrders]);
+  useEffect(() => {
+    if (!isPending && !user) navigate("/auth/sign-in", { replace: true });
+  }, [isPending, user, navigate]);
 
   const stats = useMemo(() => ({ total: orders.length, pending: orders.filter(o => o.status === "Pending").length, sales: orders.reduce((sum,o)=>sum+o.total,0) }), [orders]);
 
@@ -63,6 +68,7 @@ export default function AdminOrders() {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.order_number)}`, {
         method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
       });
+      if (response.status === 401) { navigate("/auth/sign-in", { replace: true }); return; }
       if (!response.ok) throw new Error(response.status === 403 ? "Administrator access is required." : "Status update failed. Please try again.");
       await loadOrders();
     } catch (e) { setError(e instanceof Error ? e.message : "Status update failed."); }
