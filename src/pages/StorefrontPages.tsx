@@ -45,7 +45,7 @@ export function NeonProductDetail() {
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
   const { add } = useStore();
-  useEffect(() => { loadProducts().then(items => setProduct(items.find(item => String(item.id) === id) || null)).catch(e => setError(e.message)); }, [id]);
+  useEffect(() => { loadProducts().then(items => setProduct(items.find(item => String(item.id) === id || item.databaseId === id) || null)).catch(e => setError(e.message)); }, [id]);
   if (error) return <Layout><div className="empty-page"><h1>Flower details are unavailable.</h1><p>{error}</p><Link to="/shop">Back to flowers</Link></div></Layout>;
   if (!product) return <Layout><div className="empty-page"><h1>Loading flower details…</h1></div></Layout>;
   const price = size === "Small" ? Math.max(89, product.price - 50) : size === "Large" ? product.price + 50 : product.price;

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Layout } from "../storefront";
@@ -11,6 +11,7 @@ export default function PaymentCheckout() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [busy, setBusy] = useState(false);
+  const submitting = useRef(false);
   const [error, setError] = useState("");
   const [onlineAvailable, setOnlineAvailable] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cash_on_delivery" | "online">("cash_on_delivery");
@@ -21,7 +22,10 @@ export default function PaymentCheckout() {
   useEffect(() => { if (params.get("payment") === "cancelled") setError("Payment wasn't completed. Your cart is still available to try again."); }, [params]);
 
   async function placeOrder(event: FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true); setError("");
     try {
       const result = await submitOrder({
         customer:{fullName:form.name,email:form.email,phone:form.phone},
@@ -38,7 +42,7 @@ export default function PaymentCheckout() {
       clear();
       navigate(`/confirmation/${result.reference}`);
     } catch (err) { setError(err instanceof Error?err.message:"We couldn't submit this order. Please try again."); }
-    finally { setBusy(false); }
+    finally { submitting.current = false; setBusy(false); }
   }
 
   if (!cart.length) return <Layout><main className="simple-page"><h1>Your bag is <em>empty.</em></h1><Link className="button button-dark" to="/shop">Find your flowers</Link></main></Layout>;

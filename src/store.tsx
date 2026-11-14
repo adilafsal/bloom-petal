@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-export type Product={id:string|number;name:string;price:number;category:string;description:string;image:string;tag?:string;available?:boolean;stockQuantity?:number|null;featured?:boolean;regularPrice?:number;salePrice?:number|null;shortDescription?:string;categoryId?:string};
+export type Product={id:string|number;databaseId?:string;name:string;price:number;category:string;description:string;image:string;tag?:string;available?:boolean;stockQuantity?:number|null;featured?:boolean;regularPrice?:number;salePrice?:number|null;shortDescription?:string;categoryId?:string};
 export type Item={product:Product;quantity:number;size:string;custom?:string};
 export const inventory:Product[]=[
 {id:1,name:"The Blush Edit",price:149,category:"Roses",description:"Garden roses and delicate seasonal stems, gathered in soft blush tones.",image:"https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=800&q=85",tag:"Bestseller"},
@@ -15,15 +15,15 @@ export const inventory:Product[]=[
 {id:11,name:"Ivory Hour",price:189,category:"Lilies",description:"Long-stemmed white lilies with graceful foliage and a gentle scent.",image:"https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85"},
 {id:12,name:"Crimson Notes",price:199,category:"Roses",description:"A dozen classic red roses, wrapped simply in soft cream paper.",image:"https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=85"}];
 export const getProducts=()=>{try{return [...inventory,...JSON.parse(localStorage.getItem("bp-extra-products")||"[]") as Product[]]}catch{return inventory}};
-type StoreType={cart:Item[];add:(p:Product,size?:string,custom?:string)=>void;quantity:(id:number,change:number)=>void;remove:(id:number)=>void;clear:()=>void;orders:any[];placeOrder:(data:any)=>string};
+type StoreType={cart:Item[];add:(p:Product,size?:string,custom?:string)=>void;quantity:(id:string|number,change:number)=>void;remove:(id:string|number)=>void;clear:()=>void;orders:any[];placeOrder:(data:any)=>string};
 const Store=createContext<StoreType|null>(null);
 export function StoreProvider({children}:{children:ReactNode}){
   const [cart,setCart]=useState<Item[]>(()=>{try{return JSON.parse(localStorage.getItem("bp-cart")||"[]")}catch{return []}});
   const [orders,setOrders]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem("bp-orders")||"[]")}catch{return []}});
   useEffect(()=>localStorage.setItem("bp-cart",JSON.stringify(cart)),[cart]);
   const add=(p:Product,size="Medium",custom?:string)=>setCart(c=>{const found=c.find(i=>i.product.id===p.id&&i.size===size&&i.custom===custom);return found?c.map(i=>i===found?{...i,quantity:i.quantity+1}:i):[...c,{product:p,size,custom,quantity:1}]});
-  const quantity=(id:number,n:number)=>setCart(c=>c.map(i=>i.product.id===id?{...i,quantity:i.quantity+n}:i).filter(i=>i.quantity>0));
-  const remove=(id:number)=>setCart(c=>c.filter(i=>i.product.id!==id));
+  const quantity=(id:string|number,n:number)=>setCart(c=>c.map(i=>i.product.id===id?{...i,quantity:i.quantity+n}:i).filter(i=>i.quantity>0));
+  const remove=(id:string|number)=>setCart(c=>c.filter(i=>i.product.id!==id));
   const clear=useCallback(()=>setCart([]),[]);
   const placeOrder=(data:any)=>{const ref=`BP${Date.now().toString().slice(-7)}`;const list=[{...data,ref,status:"Order Received",items:cart,created:new Date().toISOString()},...orders];setOrders(list);localStorage.setItem("bp-orders",JSON.stringify(list));setCart([]);return ref};
   return <Store.Provider value={{cart,add,quantity,remove,clear,orders,placeOrder}}>{children}</Store.Provider>;

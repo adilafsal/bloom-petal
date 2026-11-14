@@ -21,6 +21,7 @@ export type PlaceOrderResult = { reference: string; total: number; checkoutUrl?:
 
 type ProductApiRecord = {
   id: string;
+  database_id: string;
   name: string;
   short_description: string;
   description: string;
@@ -43,6 +44,7 @@ export async function loadProducts(): Promise<StoreProduct[]> {
   const records = await response.json() as ProductApiRecord[];
   return records.map(product => ({
     id: product.id,
+    databaseId: product.database_id,
     name: product.name,
     shortDescription: product.short_description,
     description: product.description,
@@ -70,8 +72,8 @@ export async function submitOrder(order: PlaceOrderInput): Promise<PlaceOrderRes
   const response = await fetch("/api/orders", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(order),
   });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.statusMessage || "We couldn't place the order. Please try again.");
+  const result = await response.json().catch(() => ({})) as { statusMessage?: string; message?: string; data?: { statusMessage?: string } };
+  if (!response.ok) throw new Error(result.statusMessage || result.data?.statusMessage || result.message || "We couldn't place the order. Please try again.");
   return result;
 }
 
@@ -99,6 +101,6 @@ export function toServerItems(items: Item[]): SubmittedItem[] {
         throw new Error("Your custom bouquet details are incomplete. Please rebuild it before checkout.");
       }
     }
-    return { productId: item.product.id, quantity: item.quantity, size: item.size, customization: item.custom ? { note: item.custom } : {} };
+    return { productId: item.product.databaseId ?? item.product.id, quantity: item.quantity, size: item.size, customization: item.custom ? { note: item.custom } : {} };
   });
 }

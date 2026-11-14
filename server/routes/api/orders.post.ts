@@ -30,7 +30,16 @@ export default defineHandler(async event => {
   const customer = body?.customer, delivery = body?.delivery, items = body?.items;
   if (!customer?.fullName?.trim() || !customer.email?.includes("@") || !customer.phone?.trim()) throw createError({ statusCode: 400, statusMessage: "Valid customer details are required." });
   if (!delivery?.address?.trim() || !delivery.city?.trim() || !delivery.area?.trim() || !delivery.date || !delivery.time) throw createError({ statusCode: 400, statusMessage: "Complete delivery information is required." });
-  if (!items?.length || items.length > 40 || items.some(item => !Number.isInteger(item.quantity) || item.quantity! < 1 || item.quantity! > 30 || !["Small", "Medium", "Large"].includes(item.size || "Medium") || (item.customBouquet ? !priceCustomBouquet(item) : !(typeof item.productId === "string" && uuidPattern.test(item.productId)) && !(typeof item.productId === "number" && Number.isSafeInteger(item.productId) && item.productId > 0)))) throw createError({ statusCode: 400, statusMessage: "A valid order item list is required." });
+  if (!items?.length || items.length > 40) throw createError({ statusCode: 400, statusMessage: "Your order must contain between 1 and 40 items." });
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity! < 1 || item.quantity! > 30) throw createError({ statusCode: 400, statusMessage: "Each product quantity must be a whole number between 1 and 30." });
+    if (!item.size || !["Small", "Medium", "Large"].includes(item.size)) throw createError({ statusCode: 400, statusMessage: "Choose a valid size for every bouquet." });
+    if (item.customBouquet) {
+      if (!priceCustomBouquet(item)) throw createError({ statusCode: 400, statusMessage: "The custom bouquet details are invalid. Please review your flower, size, colour, wrapping and extras selections." });
+    } else if (!(typeof item.productId === "string" && uuidPattern.test(item.productId)) && !(typeof item.productId === "number" && Number.isSafeInteger(item.productId) && item.productId > 0)) {
+      throw createError({ statusCode: 400, statusMessage: "A product identifier is invalid. Refresh your bag and try again." });
+    }
+  }
   const paymentMethod = body.paymentMethod || "cash_on_delivery";
   if (!["cash_on_delivery", "online"].includes(paymentMethod)) throw createError({ statusCode: 400, statusMessage: "Choose a supported payment method." });
   if (paymentMethod === "online" && !onlinePaymentsEnabled) throw createError({ statusCode: 503, statusMessage: "Online payment is not configured. Choose Cash on Delivery." });
@@ -41,7 +50,9 @@ export default defineHandler(async event => {
   });
   const reference = `BP${randomUUID().replaceAll("-", "").toUpperCase()}`;
   const address = { address: delivery.address.trim(), city: delivery.city.trim(), area: delivery.area.trim(), building: delivery.building?.trim() ?? "", apartment: delivery.apartment?.trim() ?? "" };
-  const rows = await sql`
+  let rows: Array<{ id: string; reference: string; total: number }>;
+  try {
+    rows = await sql`
     WITH requested AS (
       SELECT * FROM jsonb_to_recordset(${JSON.stringify(normalizedItems)}::jsonb)
         AS x("productId" text, quantity integer, size text, customization jsonb, "customName" text, "customPrice" numeric)
@@ -94,7 +105,12 @@ export default defineHandler(async event => {
       SELECT new_order.id, priced.product_id, priced.name, priced.quantity, priced.price, priced.size, priced.customization FROM new_order CROSS JOIN priced RETURNING order_id
     )
     SELECT new_order.id, new_order.order_number AS reference, new_order.total::float AS total FROM new_order
-  `;
+    `;
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "unknown";
+    console.error("Order creation database statement failed.", { code });
+    throw createError({ statusCode: 500, statusMessage: "We couldn't save your order due to a database error. Your cart is unchanged; please try again or contact the shop." });
+  }
   if (!rows.length) throw createError({ statusCode: 409, statusMessage: "One or more products are unavailable or no longer have enough stock. Refresh your bag and try again." });
   const savedOrder = rows[0] as { id: string; reference: string; total: number };
   let checkoutUrl: string | undefined;
