@@ -11,7 +11,7 @@ const RESEND_DELAY = 60;
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const email = params.get("email") ?? "";
+  const email = (params.get("email") ?? "").trim().toLowerCase();
   const redirectTo = safeAuthRedirect(params.get("redirectTo"));
   const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(""));
   const [message, setMessage] = useState("");
@@ -19,12 +19,16 @@ export default function VerifyEmailPage() {
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [mode, setMode] = useState<"checking" | "code" | "link">("checking");
+  const [mode, setMode] = useState<"idle" | "code" | "link">("idle");
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  const sending = useRef(false);
+  const verifying = useRef(false);
   const code = digits.join("");
 
   const sendCode = useCallback(async (isResend: boolean) => {
+    if (sending.current || secondsLeft > 0) return;
     if (!email) { setMode("link"); setError("The email address is missing. Sign in again and return to verification."); return; }
+    sending.current = true;
     if (isResend) setResending(true); else setBusy(true);
     setError(""); setMessage("");
     try {
@@ -34,12 +38,14 @@ export default function VerifyEmailPage() {
       setMessage(`We've sent a 6-digit verification code to ${email}.`);
     } catch (failure) {
       const detail = failure instanceof Error ? failure.message : "";
+      if (import.meta.env.DEV) console.error("[Neon Auth] verification-code send failed:", detail || "Unknown error");
       if (/not found|not enabled|unknown|404|email-otp/i.test(detail)) {
         setMode("link");
         try {
           const fallback = await authClient.sendVerificationEmail({ email });
           if (fallback.error) throw new Error(fallback.error.message || "Verification email could not be sent.");
           setMessage("This Neon Auth project is using verification links. Open the link in your email to verify your account.");
+          setSecondsLeft(RESEND_DELAY);
           setError("");
         } catch (linkFailure) {
           setError(linkFailure instanceof Error ? linkFailure.message : "Verification email could not be sent.");
@@ -47,10 +53,9 @@ export default function VerifyEmailPage() {
       } else {
         setError(detail || "The verification code could not be sent. Please try again.");
       }
-    } finally { setBusy(false); setResending(false); }
-  }, [email]);
+    } finally { sending.current = false; setBusy(false); setResending(false); }
+  }, [email, secondsLeft]);
 
-  useEffect(() => { void sendCode(false); }, [sendCode]);
   useEffect(() => {
     if (secondsLeft <= 0) return;
     const timer = window.setTimeout(() => setSecondsLeft(value => value - 1), 1000);
@@ -59,7 +64,9 @@ export default function VerifyEmailPage() {
 
   async function verify(event: FormEvent) {
     event.preventDefault();
+    if (verifying.current) return;
     if (code.length !== CODE_LENGTH || !/^\d{6}$/.test(code)) { setError("Enter all 6 digits from the email."); return; }
+    verifying.current = true;
     setBusy(true); setError(""); setMessage("");
     try {
       const result = await authClient.emailOtp.verifyEmail({ email, otp: code });
@@ -70,8 +77,9 @@ export default function VerifyEmailPage() {
       navigate(redirectTo, { replace: true });
     } catch (failure) {
       const detail = failure instanceof Error ? failure.message : "That code is invalid or expired. Request a new code and try again.";
+      if (import.meta.env.DEV) console.error("[Neon Auth] email verification failed:", detail);
       setError(/expired|invalid|otp|code/i.test(detail) ? "That code is invalid or expired. Request a new code and try again." : detail);
-    } finally { setBusy(false); }
+    } finally { verifying.current = false; setBusy(false); }
   }
 
   function setDigit(index: number, value: string) {
@@ -100,5 +108,5 @@ export default function VerifyEmailPage() {
     inputs.current[Math.min(pasted.length, CODE_LENGTH) - 1]?.focus();
   }
 
-  return <AuthShell><section className="auth-panel"><Link to="/" className="auth-wordmark">Bloom <i>&</i> Petal</Link><p className="auth-intro">One small step before your account is ready.</p><div className="auth-card"><MailCheck size={24} color="var(--forest)"/><h1>{mode === "link" ? <>Check your <em>inbox.</em></> : <>Verify your <em>email.</em></>}</h1>{mode === "checking"&&<p role="status">Checking the email verification options…</p>}{mode === "code"&&<><p className="auth-verification-address">We've sent a 6-digit verification code to <strong>{email}</strong>.</p><form onSubmit={verify}><label>6-digit verification code</label><div className="auth-otp-inputs" onPaste={pasteCode}>{digits.map((digit,index)=><input key={index} ref={element=>{inputs.current[index]=element;}} aria-label={`Verification code digit ${index+1}`} autoComplete={index===0?"one-time-code":"off"} inputMode="numeric" pattern="[0-9]*" maxLength={6} value={digit} onChange={event=>setDigit(index,event.target.value)} onKeyDown={event=>handleKeyDown(index,event)} disabled={busy}/>)}</div>{error&&<p className="auth-form-error" role="alert">{error}</p>}{message&&<p className="auth-form-success" role="status">{message}</p>}<button type="submit" disabled={busy||code.length!==CODE_LENGTH}>{busy?"Verifying…":"Verify email"} {!busy&&<ArrowRight size={15}/>}</button></form><button className="auth-resend" type="button" disabled={resending||secondsLeft>0||busy} onClick={()=>void sendCode(true)}>{resending?"Sending code…":secondsLeft>0?`Resend code in ${secondsLeft}s`:"Resend code"}</button><small className="auth-code-note">Codes expire after 15 minutes. If this project uses link verification, open the link in your email.</small></>}{mode === "link"&&<><p className="auth-verification-address">{message||"Your Neon Auth project is configured to verify email by link."}</p>{error&&<p className="auth-form-error" role="alert">{error}</p>}<button className="auth-resend" type="button" disabled={resending} onClick={()=>void sendCode(true)}>{resending?"Sending…":"Resend verification email"}</button></>}{mode === "checking"&&error&&<p className="auth-form-error" role="alert">{error}</p>}</div><Link to="/auth/sign-in" className="auth-back">Back to sign in</Link></section></AuthShell>;
+  return <AuthShell><section className="auth-panel"><Link to="/" className="auth-wordmark">Bloom <i>&</i> Petal</Link><p className="auth-intro">One small step before your account is ready.</p><div className="auth-card"><MailCheck size={24} color="var(--forest)"/><h1>{mode === "link" ? <>Check your <em>inbox.</em></> : <>Verify your <em>email.</em></>}</h1>{mode === "idle"&&<><p className="auth-verification-address">Send one verification code to <strong>{email || "your account email"}</strong>. No code is sent until you request it.</p>{error&&<p className="auth-form-error" role="alert">{error}</p>}<button className="auth-send-code" type="button" disabled={busy||!email} onClick={()=>void sendCode(false)}>{busy?"Sending code…":"Send verification code"}</button></>}{mode === "code"&&<><p className="auth-verification-address">We've sent a 6-digit verification code to <strong>{email}</strong>.</p><form onSubmit={verify}><label>6-digit verification code</label><div className="auth-otp-inputs" onPaste={pasteCode}>{digits.map((digit,index)=><input key={index} ref={element=>{inputs.current[index]=element;}} aria-label={`Verification code digit ${index+1}`} autoComplete={index===0?"one-time-code":"off"} inputMode="numeric" pattern="[0-9]*" maxLength={6} value={digit} onChange={event=>setDigit(index,event.target.value)} onKeyDown={event=>handleKeyDown(index,event)} disabled={busy}/>)}</div>{error&&<p className="auth-form-error" role="alert">{error}</p>}{message&&<p className="auth-form-success" role="status">{message}</p>}<button type="submit" disabled={busy||code.length!==CODE_LENGTH}>{busy?"Verifying…":"Verify email"} {!busy&&<ArrowRight size={15}/>}</button></form><button className="auth-resend" type="button" disabled={resending||secondsLeft>0||busy} onClick={()=>void sendCode(true)}>{resending?"Sending code…":secondsLeft>0?`Resend code in ${secondsLeft}s`:"Resend code"}</button><small className="auth-code-note">Codes expire after 15 minutes. If this project uses link verification, open the link in your email.</small></>}{mode === "link"&&<><p className="auth-verification-address">{message||"Your Neon Auth project is configured to verify email by link."}</p>{error&&<p className="auth-form-error" role="alert">{error}</p>}<button className="auth-resend" type="button" disabled={resending} onClick={()=>void sendCode(true)}>{resending?"Sending…":"Resend verification email"}</button></>}</div><Link to="/auth/sign-in" className="auth-back">Back to sign in</Link></section></AuthShell>;
 }
