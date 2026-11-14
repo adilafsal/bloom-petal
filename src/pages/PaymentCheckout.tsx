@@ -7,6 +7,7 @@ import { useAuthSession } from "../lib/auth-client";
 import { giftMessageForOrder, submitOrder, toServerItems } from "../lib/store-api";
 import "../payment-checkout.css";
 import "../saved-addresses.css";
+import "../checkout-save-address.css";
 
 type Address = { id: string; recipient_name: string; phone: string; label: "Home" | "Work" | "Other"; building: string; street: string; area: string; city: string; delivery_instructions: string; is_default: boolean };
 type AddressForm = Omit<Address, "id" | "is_default">;
