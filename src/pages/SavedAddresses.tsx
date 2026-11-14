@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Home, MapPin, Pencil, Plus, Trash2 } from "lucide-rea
 import { Layout } from "../storefront";
 import { useAuthSession } from "../lib/auth-client";
 import "../saved-addresses.css";
+import "../address-save-button.css";
 
 type SavedAddress = { id:string; recipient_name:string; phone:string; label:"Home"|"Work"|"Other"; building:string; street:string; area:string; city:string; delivery_instructions:string; is_default:boolean };
 type AddressInput = Omit<SavedAddress,"id"|"is_default">;
