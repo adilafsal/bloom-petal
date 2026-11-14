@@ -1,0 +1,70 @@
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowRight, Check, Minus, Plus } from "lucide-react";
+import { Layout, ProductGrid } from "../storefront";
+import { money, useStore } from "../store";
+import { loadProducts, submitOrder, toServerItems, type StoreProduct } from "../lib/store-api";
+
+const categories = ["All flowers", "Roses", "Tulips", "Lilies", "Sunflowers", "Mixed Bouquets", "Flower Boxes", "Seasonal Flowers"];
+
+export function NeonShop() {
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [category, setCategory] = useState("All flowers");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("Featured");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { loadProducts().then(setProducts).catch(e => setError(e.message)).finally(() => setLoading(false)); }, []);
+  let visible = products.filter(p => (category === "All flowers" || p.category === category) && p.name.toLowerCase().includes(search.toLowerCase()));
+  if (sort === "Price: Low to High") visible = [...visible].sort((a,b) => a.price-b.price);
+  if (sort === "Price: High to Low") visible = [...visible].sort((a,b) => b.price-a.price);
+  if (sort === "New Arrivals") visible = [...visible].reverse();
+  return <Layout><main className="catalog-page"><div className="catalog-hero"><span className="eyebrow">ARRANGED WITH CARE, ALWAYS</span><h1>Our Flower <em>Collection</em></h1><p>Find the flowers for the words you can't quite find. Each one arranged fresh, just for you.</p></div><div className="catalog-tools"><div className="filter-tabs">{categories.map(c=><button className={category===c?"selected":""} key={c} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="catalog-controls"><label><input placeholder="Search flowers" value={search} onChange={e=>setSearch(e.target.value)}/></label><label><select value={sort} onChange={e=>setSort(e.target.value)}><option>Featured</option><option>Price: Low to High</option><option>Price: High to Low</option><option>New Arrivals</option></select></label></div></div>{loading?<p className="catalog-count">Loading the flower collection…</p>:error?<div className="no-products"><h2>Flowers are temporarily unavailable.</h2><p>{error}</p></div>:<><p className="catalog-count">{visible.length} arrangements, made with love</p>{visible.length?<ProductGrid products={visible}/>:<div className="no-products"><h2>No flowers found just yet.</h2><p>Try another search or category.</p></div>}</>}<div className="builder-promo"><span className="eyebrow">SOMETHING A LITTLE MORE PERSONAL</span><h2>Make it yours.</h2><p>Choose the flowers, colours and finishing touches.</p><Link className="button button-dark" to="/builder">Build a bouquet <ArrowRight size={16}/></Link></div></main></Layout>;
+}
+
+export function NeonProductDetail() {
+  const { id } = useParams();
+  const [product, setProduct] = useState<StoreProduct | null>(null);
+  const [error, setError] = useState("");
+  const [size, setSize] = useState("Medium");
+  const [quantity, setQuantity] = useState(1);
+  const [note, setNote] = useState("");
+  const { add } = useStore();
+  useEffect(() => { loadProducts().then(items => setProduct(items.find(p => p.id === Number(id)) || null)).catch(e => setError(e.message)); }, [id]);
+  if (error) return <Layout><div className="empty-page"><h1>Flower details are unavailable.</h1><p>{error}</p><Link to="/shop">Back to flowers</Link></div></Layout>;
+  if (!product) return <Layout><div className="empty-page"><h1>Loading flower details…</h1></div></Layout>;
+  const price = size === "Small" ? Math.max(89, product.price - 50) : size === "Large" ? product.price + 50 : product.price;
+  return <Layout><main className="detail-page"><div className="breadcrumbs"><Link to="/shop">Flowers</Link> / {product.category} / {product.name}</div><div className="detail-grid"><div className="detail-image"><img src={product.image} alt={`${product.name} flower arrangement`}/><span>Arranged fresh, just for you</span></div><div className="detail-copy"><span className="eyebrow">{product.category.toUpperCase()} · MADE WITH CARE</span><h1>{product.name}</h1><div className="detail-price">{money(price)}</div><p>{product.description}</p><h3>Choose your size</h3><div className="size-options">{["Small","Medium","Large"].map(s=><button className={size===s?"chosen":""} key={s} onClick={()=>setSize(s)}><span>{s}</span><small>{money(s==="Small"?Math.max(89,product.price-50):s==="Large"?product.price+50:product.price)}</small></button>)}</div><label className="field-label">Gift message (optional)<textarea value={note} maxLength={180} onChange={e=>setNote(e.target.value)}/></label><div className="detail-purchase"><div className="quantity-select"><button onClick={()=>setQuantity(Math.max(1,quantity-1))}><Minus size={14}/></button><span>{quantity}</span><button onClick={()=>setQuantity(quantity+1)}><Plus size={14}/></button></div><button className="button button-dark" onClick={()=>{for(let i=0;i<quantity;i++) add({...product,price},size,note||undefined)}}>Add to your bag <ArrowRight size={15}/></button></div></div></div></main></Layout>;
+}
+
+export function NeonCheckout() {
+  const { cart, clear } = useStore();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ name:"", email:"", phone:"", address:"", city:"", area:"", building:"", apartment:"", date:"", time:"9am–1pm", message:"" });
+  const subtotal = cart.reduce((sum,item)=>sum+item.product.price*item.quantity,0);
+  const update = (key: keyof typeof form, value: string) => setForm(current=>({...current,[key]:value}));
+  async function placeOrder(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const items = toServerItems(cart);
+      const result = await submitOrder({
+        customer:{fullName:form.name,email:form.email,phone:form.phone},
+        items,
+        delivery:{address:form.address,city:form.city,area:form.area,building:form.building,apartment:form.apartment,date:form.date,time:form.time},
+        giftMessage:form.message,
+        paymentMethod:"cash_on_delivery",
+      });
+      clear(); navigate(`/confirmation/${result.reference}`);
+    } catch (e) { setError(e instanceof Error?e.message:"Unable to place your order right now."); }
+    finally { setBusy(false); }
+  }
+  if (!cart.length) return <Layout><main className="simple-page"><h1>Your bag is <em>empty.</em></h1><Link className="button button-dark" to="/shop">Find your flowers</Link></main></Layout>;
+  return <Layout><main className="checkout-page"><div className="catalog-hero"><span className="eyebrow">JUST A FEW DETAILS</span><h1>Let's send some <em>joy.</em></h1><p>Orders are submitted to the connected Neon database. Payment remains Cash on Delivery.</p></div><form className="checkout-grid" onSubmit={placeOrder}><div className="checkout-fields"><section><h2>Your details</h2><div className="form-grid"><label>Full name<input required value={form.name} onChange={e=>update("name",e.target.value)}/></label><label>Email address<input required type="email" value={form.email} onChange={e=>update("email",e.target.value)}/></label><label>Phone number<input required type="tel" value={form.phone} onChange={e=>update("phone",e.target.value)}/></label></div></section><section><h2>Delivery details</h2><label>Street address<input required value={form.address} onChange={e=>update("address",e.target.value)}/></label><div className="form-grid"><label>City<input required value={form.city} onChange={e=>update("city",e.target.value)}/></label><label>Area<input required value={form.area} onChange={e=>update("area",e.target.value)}/></label><label>Building / villa<input required value={form.building} onChange={e=>update("building",e.target.value)}/></label><label>Apartment (optional)<input value={form.apartment} onChange={e=>update("apartment",e.target.value)}/></label><label>Delivery date<input required type="date" min={new Date().toISOString().slice(0,10)} value={form.date} onChange={e=>update("date",e.target.value)}/></label><label>Delivery time<select value={form.time} onChange={e=>update("time",e.target.value)}>{["9am–1pm","1pm–5pm","5pm–9pm"].map(s=><option key={s}>{s}</option>)}</select></label></div></section><section><h2>Gift message</h2><label>Message (optional)<textarea maxLength={500} value={form.message} onChange={e=>update("message",e.target.value)}/></label><p className="payment-honest">Cash on Delivery only. No online payment gateway is configured.</p></section></div><aside className="order-summary"><h2>Your order</h2>{cart.map((item,index)=><div className="summary-product" key={`${item.product.id}-${index}`}><span>{item.product.name} · {item.size} × {item.quantity}</span><strong>{money(item.product.price*item.quantity)}</strong></div>)}<div><span>Subtotal (server-calculated)</span><strong>{money(subtotal)}</strong></div><div><span>Delivery</span><strong>AED 25</strong></div><button className="button button-dark checkout-button" disabled={busy}>{busy?"Submitting order…":"Place order · Cash on Delivery"} <ArrowRight size={15}/></button>{error&&<p role="alert" className="tracking-error">{error}</p>}<small className="demo-disclosure">Product prices and availability are validated by the server.</small></aside></form></main></Layout>;
+}
+
+export function NeonConfirmation() {
+  const { ref } = useParams();
+  return <Layout><main className="confirmation"><div className="confirm-icon"><Check/></div><span className="eyebrow">ORDER RECEIVED</span><h1>Thank you, <em>lovely.</em></h1><p>Your order has been saved. Our florist will follow up to confirm delivery details and Cash on Delivery.</p><div className="reference-box"><span>ORDER REFERENCE</span><strong>{ref}</strong></div><p className="demo-disclosure">Order storage is connected to the Neon development database. Notifications and payment processing are not configured.</p><Link className="button button-dark" to="/shop">Back to flowers <ArrowRight size={15}/></Link></main></Layout>;
+}
