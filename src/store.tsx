@@ -24,7 +24,7 @@ export function StoreProvider({children}:{children:ReactNode}){
   const [cartNotice,setCartNotice]=useState("");
   const [orders,setOrders]=useState<any[]>(()=>{try{return JSON.parse(localStorage.getItem("bp-orders")||"[]")}catch{return []}});
   useEffect(()=>localStorage.setItem("bp-cart",JSON.stringify(cart)),[cart]);
-  useEffect(()=>{let active=true;loadProducts().then(products=>{if(!active)return;setCatalog(products);let invalid=0;setCart(current=>current.flatMap(item=>{
+  useEffect(()=>{let active=true;loadProducts().then(products=>{if(!active)return;setCatalog(products);let invalid=0;setCart(current=>current.flatMap((item):Item[]=>{
     if(!item||typeof item!=="object"||!item.product||typeof item.product!=="object"||typeof item.product.category!=="string"||(typeof item.product.id!=="string"&&typeof item.product.id!=="number")){invalid++;return[];}
     if(!Number.isInteger(item.quantity)||item.quantity<1||item.quantity>30||!["Small","Medium","Large"].includes(item.size)){invalid++;return[];}
     if(item.product.category==="Custom bouquet"){if(!item.custom){invalid++;return[];}return [{...item,product:{...item.product,id:typeof item.product.id==="string"&&item.product.id.startsWith("custom:")?item.product.id:`custom:${crypto.randomUUID()}`}}];}

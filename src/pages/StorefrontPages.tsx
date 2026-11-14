@@ -71,7 +71,7 @@ export function NeonCheckout() {
       const result = await submitOrder({
         customer:{fullName:form.name,email:form.email,phone:form.phone},
         items,
-        delivery:{address:form.address,city:form.city,area:form.area,building:form.building,apartment:form.apartment,date:form.date,time:form.time},
+        delivery:{address:form.address,city:form.city,area:form.area,building:form.building,apartment:form.apartment,date:form.date,time:form.time,zoneId:"",slotId:"",instructions:""},
         giftMessage:giftMessageForOrder(cart, form.message),
         paymentMethod,
       });

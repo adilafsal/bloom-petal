@@ -74,7 +74,7 @@ export async function submitOrder(order: PlaceOrderInput): Promise<PlaceOrderRes
   const response = await fetch("/api/orders", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(order),
   });
-  const result = await response.json().catch(() => ({})) as { statusMessage?: string; message?: string; data?: { statusMessage?: string } };
+  const result = await response.json().catch(() => ({})) as PlaceOrderResult & { statusMessage?: string; message?: string; data?: { statusMessage?: string } };
   if (!response.ok) throw new Error(result.statusMessage || result.data?.statusMessage || result.message || "We couldn't place the order. Please try again.");
   return result;
 }
