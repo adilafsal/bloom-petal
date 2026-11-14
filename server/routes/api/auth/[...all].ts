@@ -49,6 +49,11 @@ export default defineHandler(async event => {
   const getSetCookie = (upstream.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
   const cookies = getSetCookie?.call(upstream.headers) ?? [];
   for (let cookie of cookies) {
+    const cookieParts = cookie.split(";").map(part => part.trim());
+    const cookieName = cookieParts[0].split("=", 1)[0];
+    if (cookieName.endsWith("neon-auth.session_token")) {
+      cookie = [cookieParts[0], ...cookieParts.slice(1).filter(attribute => !attribute.toLowerCase().startsWith("path=")), "Path=/"].join("; ");
+    }
     if (url.protocol === "http:") {
       cookie = cookie.replaceAll("__Secure-", "__Secure_").replaceAll("__Host-", "__Host_");
       cookie = cookie.replaceAll("; Secure", "").replaceAll(";Secure", "").replaceAll("; Partitioned", "").replaceAll(";Partitioned", "");

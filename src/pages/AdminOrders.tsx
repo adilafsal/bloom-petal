@@ -33,6 +33,7 @@ export default function AdminOrders() {
   const [selected, setSelected] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [authFailure, setAuthFailure] = useState("");
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [updating, setUpdating] = useState(false);
   const [newOrderCount, setNewOrderCount] = useState(0);
@@ -49,12 +50,14 @@ export default function AdminOrders() {
       if (dateFrom) params.set("from", dateFrom);
       if (dateTo) params.set("to", dateTo);
       const response = await fetch(`/api/admin/orders?${params}`, { credentials: "same-origin" });
-      if (response.status === 401) {
+      if (response.status === 401 || response.status === 403) {
+        const body = await response.json().catch(() => null) as { statusMessage?: string; message?: string } | null;
+        const message = body?.statusMessage || body?.message || "Your administrator session could not be verified.";
         setOrders([]);
-        setError("The server could not verify your session. It may have expired or your email may not be verified. Sign out and sign in again.");
+        if (response.status === 401) setError(message);
+        else { setAuthFailure(message); setAuthorized(false); }
         return;
       }
-      if (response.status === 403) { setAuthorized(false); setOrders([]); return; }
       if (!response.ok) {
         const body = await response.json().catch(() => null) as { statusMessage?: string; message?: string } | null;
         throw new Error(body?.statusMessage || body?.message || "Couldn't load orders from Neon. Please try again.");
@@ -114,7 +117,7 @@ export default function AdminOrders() {
 
   if (isPending || (!user && !authorized)) return <main className="admin-orders-state"><LoaderCircle className="spin"/><p>Checking administrator session…</p></main>;
   if (!user) return null;
-  if (authorized === false) return <main className="admin-orders-state"><span className="eyebrow">ACCESS RESTRICTED</span><h1>This account isn't <em>on the shop team.</em></h1><p>Your verified account is not listed in the server administrator allowlist. Customer order data remains protected.</p><button className="button button-outline" onClick={() => authClient.signOut({})}>Sign out <LogOut size={15}/></button></main>;
+  if (authorized === false) return <main className="admin-orders-state"><span className="eyebrow">ACCESS RESTRICTED</span><h1>Admin access <em>is unavailable.</em></h1><p>{authFailure || "Customer order data remains protected."}</p><button className="button button-outline" onClick={() => authClient.signOut({})}>Sign out <LogOut size={15}/></button></main>;
 
   return <div className="admin-app"><aside className={`admin-sidebar ${sidebarOpen?"open":""}`}><Link to="/" className="admin-brand"><Flower2 size={21}/><span>Bloom <i>&</i> Petal</span></Link><div className="admin-sidebar-caption">SHOP MANAGEMENT</div><nav className="admin-sidebar-nav"><Link to="/admin" className="admin-nav-link"><LayoutDashboard size={16}/> Dashboard</Link><Link to="/admin/orders" className="admin-nav-link active"><Package size={16}/> Orders{pendingCount>0&&<span className="admin-nav-badge">{pendingCount}</span>}{newOrderCount>0&&<span className="admin-new-dot" title={`${newOrderCount} new orders`}/>}</Link><span className="admin-nav-link disabled"><Flower2 size={16}/> Products <small>Later</small></span><span className="admin-nav-link disabled"><Tags size={16}/> Categories <small>Later</small></span><span className="admin-nav-link disabled"><Users size={16}/> Customers <small>Later</small></span><span className="admin-nav-link disabled"><Settings size={16}/> Store Settings <small>Later</small></span></nav><div className="admin-sidebar-bottom"><div className="admin-user-info"><span className="admin-user-avatar">{(user.name||user.email).slice(0,1).toUpperCase()}</span><span><strong>{user.name||"Store owner"}</strong><small>{user.email}</small></span></div><button className="admin-logout" onClick={() => authClient.signOut({})}><LogOut size={15}/> Logout</button></div></aside>
     {sidebarOpen&&<button className="admin-mobile-scrim" onClick={()=>setSidebarOpen(false)} aria-label="Close navigation"/>}
