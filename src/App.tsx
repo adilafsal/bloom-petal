@@ -10,6 +10,7 @@ import AuthPage from "./pages/AuthPage";
 import SignUpPage from "./pages/SignUpPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import AdminOrders from "./pages/AdminOrders";
+import AdminDelivery from "./pages/AdminDelivery";
 import { StoreProvider } from "./store";
 import NeonCart from "./pages/NeonCart";
 import NeonBuilder from "./pages/NeonBuilder";
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/track" element={<Tracking />} />
               <Route path="/admin" element={<Navigate to="/admin/orders" replace />} />
               <Route path="/admin/orders" element={<AdminOrders />} />
+              <Route path="/admin/delivery" element={<AdminDelivery />} />
               <Route path="/auth/sign-up" element={<SignUpPage />} />
               <Route path="/auth/verify-email" element={<VerifyEmailPage />} />
               <Route path="/auth/:path" element={<AuthPage />} />

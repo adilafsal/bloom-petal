@@ -8,7 +8,7 @@ export default defineHandler(async event => {
   const rows = await sql`
     SELECT o.order_number, o.created_at, o.subtotal::float AS subtotal,
       o.delivery_fee::float AS delivery_fee, o.total::float AS total,
-      o.delivery_address, o.delivery_date, o.delivery_time, o.gift_message,
+      o.delivery_address, o.delivery_date, o.delivery_time, o.delivery_instructions, o.gift_message,
       o.payment_method, o.payment_status,
       CASE WHEN o.status = 'Order Received' THEN 'Pending' ELSE o.status END AS status,
       c.full_name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,

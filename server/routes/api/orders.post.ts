@@ -13,7 +13,7 @@ const extraPrices: Record<string, number> = { "Greeting card": 12, "Gift box": 3
 const sizePrices: Record<string, number> = { Small: 139, Medium: 189, Large: 259 };
 type CustomBouquet = { flowers?: string[]; color?: string; size?: string; wrapping?: string; extras?: string[]; giftMessage?: string };
 type OrderItem = { productId?: string | number; quantity?: number; size?: string; customization?: Record<string, unknown>; customBouquet?: CustomBouquet };
-type OrderInput = { customer?: { fullName?: string; email?: string; phone?: string }; items?: OrderItem[]; delivery?: { address?: string; city?: string; area?: string; building?: string; apartment?: string; date?: string; time?: string }; giftMessage?: string; paymentMethod?: string };
+type OrderInput = { customer?: { fullName?: string; email?: string; phone?: string }; items?: OrderItem[]; delivery?: { address?: string; city?: string; area?: string; building?: string; apartment?: string; date?: string; time?: string; zoneId?: string; slotId?: string; instructions?: string }; giftMessage?: string; paymentMethod?: string };
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function priceCustomBouquet(item: OrderItem) {
@@ -48,6 +48,26 @@ export default defineHandler(async event => {
     const custom = item.customBouquet ? priceCustomBouquet(item)! : null;
     return { productId: custom ? null : String(item.productId), quantity: item.quantity, size: custom?.size ?? item.size ?? "Medium", customName: custom?.name ?? null, customPrice: custom?.price ?? null, customization: custom?.details ?? item.customization ?? {} };
   });
+  if (!delivery.zoneId || !delivery.slotId) throw createError({ statusCode: 400, statusMessage: "Choose an available delivery zone and time slot." });
+  const [zoneRows, settingsRows, closedRows, slotRows, subtotalRows] = await Promise.all([
+    sql`SELECT id, city, areas, fee::float AS fee, minimum_order::float AS minimum_order FROM delivery_zones WHERE id=${delivery.zoneId} AND enabled=true`,
+    sql`SELECT settings FROM store_settings WHERE store_key='delivery'`,
+    sql`SELECT 1 FROM delivery_closed_dates WHERE closed_date=${delivery.date}::date`,
+    sql`SELECT id, label, max_orders FROM delivery_slots WHERE id=${delivery.slotId} AND enabled=true`,
+    sql`WITH requested AS (SELECT * FROM jsonb_to_recordset(${JSON.stringify(normalizedItems)}::jsonb) AS x("productId" text,quantity integer,size text,"customPrice" numeric)) SELECT COALESCE(sum(CASE WHEN "customPrice" IS NOT NULL THEN "customPrice" WHEN size='Small' THEN GREATEST(COALESCE(p.sale_price,p.price)-50,89) WHEN size='Large' THEN COALESCE(p.sale_price,p.price)+50 ELSE COALESCE(p.sale_price,p.price) END * quantity),0)::float AS subtotal FROM requested LEFT JOIN products p ON p.id::text=requested."productId" WHERE "customPrice" IS NOT NULL OR p.id IS NOT NULL`,
+  ]);
+  if (!zoneRows.length || zoneRows[0].city.toLowerCase() !== delivery.city!.trim().toLowerCase() || !zoneRows[0].areas.some((area:string)=>area.toLowerCase()===delivery.area!.trim().toLowerCase())) throw createError({ statusCode: 400, statusMessage: "This address is outside the selected delivery zone." });
+  const deliverySettings = settingsRows[0]?.settings ?? {};
+  if (deliverySettings.deliveryAvailable === false) throw createError({ statusCode: 503, statusMessage: "Delivery is temporarily unavailable." });
+  const settingsMinimum = Number(deliverySettings.minimumOrderAmount || 0);
+  if (Number(subtotalRows[0].subtotal) < Math.max(settingsMinimum, Number(zoneRows[0].minimum_order))) throw createError({ statusCode: 400, statusMessage: "Your order does not meet the minimum for this delivery area." });
+  if (!slotRows.length || closedRows.length) throw createError({ statusCode: 409, statusMessage: "That delivery date or time slot is unavailable." });
+  const dayOffset = Math.ceil((new Date(`${delivery.date}T00:00:00Z`).getTime()-new Date(`${new Date().toISOString().slice(0,10)}T00:00:00Z`).getTime())/86400000);
+  if (dayOffset < 0 || dayOffset > Number(deliverySettings.advanceDays || 30)) throw createError({ statusCode: 400, statusMessage: "Choose a delivery date within the available booking window." });
+  if (dayOffset === 0 && new Date().toTimeString().slice(0,5) >= String(deliverySettings.sameDayCutoff || "12:00")) throw createError({ statusCode: 409, statusMessage: "Same-day delivery has passed its cutoff time." });
+  const computedSubtotal=Number(subtotalRows[0].subtotal);
+  const freeThreshold=Number(deliverySettings.freeDeliveryThreshold||0);
+  const deliveryFee=freeThreshold>0&&computedSubtotal>=freeThreshold?0:Number(zoneRows[0].fee??deliverySettings.defaultDeliveryFee??25);
   const reference = `BP${randomUUID().replaceAll("-", "").toUpperCase()}`;
   const address = { address: delivery.address.trim(), city: delivery.city.trim(), area: delivery.area.trim(), building: delivery.building?.trim() ?? "", apartment: delivery.apartment?.trim() ?? "" };
   let rows: Array<{ id: string; reference: string; total: number }>;
@@ -89,16 +109,22 @@ export default defineHandler(async event => {
     ), inventory_valid AS (
       SELECT valid.ok AND (SELECT count(*) FROM stock_updates) = (SELECT count(*) FROM locked_products WHERE stock_quantity IS NOT NULL) AS ok
       FROM valid
+    ), slot_reservation AS (
+      INSERT INTO delivery_slot_bookings (slot_id, delivery_date, booked)
+      SELECT ${delivery.slotId}::uuid, ${delivery.date}::date, 1 WHERE EXISTS (SELECT 1 FROM inventory_valid WHERE ok)
+      ON CONFLICT (slot_id, delivery_date) DO UPDATE SET booked=delivery_slot_bookings.booked+1
+        WHERE delivery_slot_bookings.booked < (SELECT max_orders FROM delivery_slots WHERE id=${delivery.slotId}::uuid AND enabled=true)
+      RETURNING slot_id
     ), customer_row AS (
       INSERT INTO customers (full_name, email, phone)
-      SELECT ${customer.fullName.trim()}, ${customer.email.trim().toLowerCase()}, ${customer.phone.trim()} FROM inventory_valid WHERE inventory_valid.ok
+      SELECT ${customer.fullName.trim()}, ${customer.email.trim().toLowerCase()}, ${customer.phone.trim()} FROM inventory_valid, slot_reservation WHERE inventory_valid.ok
       ON CONFLICT (email, phone) DO UPDATE SET full_name = EXCLUDED.full_name RETURNING id
     ), totals AS (SELECT COALESCE(sum(price * quantity), 0)::numeric(10,2) AS subtotal FROM priced),
     new_order AS (
-      INSERT INTO orders (order_number, customer_id, subtotal, delivery_fee, total, delivery_address, delivery_date, delivery_time, gift_message, payment_method, payment_provider, status, payment_status)
-      SELECT ${reference}, customer_row.id, totals.subtotal, 25, totals.subtotal + 25, ${JSON.stringify(address)}::jsonb,
-        ${delivery.date}::date, ${delivery.time}, ${body.giftMessage?.slice(0, 500) ?? ""}, ${paymentMethod}, ${paymentMethod === "online" ? "stripe" : null},
-        'Pending', 'Pending'
+      INSERT INTO orders (order_number, customer_id, subtotal, delivery_fee, total, delivery_address, delivery_date, delivery_time, gift_message, payment_method, payment_provider, status, payment_status, delivery_zone_id, delivery_slot_id, delivery_instructions)
+      SELECT ${reference}, customer_row.id, totals.subtotal, ${deliveryFee}, totals.subtotal + ${deliveryFee}, ${JSON.stringify(address)}::jsonb,
+        ${delivery.date}::date, ${slotRows[0].label}, ${body.giftMessage?.slice(0, 500) ?? ""}, ${paymentMethod}, ${paymentMethod === "online" ? "stripe" : null},
+        'Pending', 'Pending', ${delivery.zoneId}::uuid, ${delivery.slotId}::uuid, ${delivery.instructions?.slice(0,500) ?? ""}
       FROM customer_row, totals, inventory_valid WHERE inventory_valid.ok RETURNING id, order_number, total
     ), saved_items AS (
       INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, size, customization)
@@ -114,7 +140,7 @@ export default defineHandler(async event => {
     console.error("Order creation database statement failed.", { code });
     throw createError({ statusCode: 500, statusMessage: "We couldn't save your order due to a database error. Your cart is unchanged; please try again or contact the shop." });
   }
-  if (!rows.length) throw createError({ statusCode: 409, statusMessage: "One or more products are unavailable or no longer have enough stock. Refresh your bag and try again." });
+  if (!rows.length) throw createError({ statusCode: 409, statusMessage: "A product is unavailable or the selected delivery slot just filled. Refresh your bag and choose an available slot." });
   const savedOrder = rows[0] as { id: string; reference: string; total: number };
   let checkoutUrl: string | undefined;
   if (paymentMethod === "online") {

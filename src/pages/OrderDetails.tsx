@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowRight, Check } from "lucide-react";
 import { Layout } from "../storefront";
 import { money } from "../store";
+import "../delivery-admin.css";
 
 type OrderDetail = {
   order_number: string; created_at: string; subtotal: number; delivery_fee: number; total: number;
