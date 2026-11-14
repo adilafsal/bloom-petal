@@ -1,19 +1,70 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Menu, Search, ShoppingBag, X, Plus, Minus, Trash2, Flower2, Instagram } from "lucide-react";
+import { useStore, type Product } from "../store";
+import "../App.css";
 
-import { MadeWithDyad } from "@/components/made-with-dyad";
-
-const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">
-          Start building your amazing project here!
-        </p>
-      </div>
-      <MadeWithDyad />
-    </div>
-  );
+type CartItem = { product: Product; quantity: number; size: string };
+const photos = {
+  hero: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=1600&q=85",
+  story: "https://images.unsplash.com/photo-1457089328109-e5d9bd499191?auto=format&fit=crop&w=1000&q=85",
+  shop: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=85",
+  vase: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&q=85",
 };
+const products: Product[] = [
+  { id: 1, name: "The Blush Edit", price: 149, category: "Roses", description: "Garden roses and delicate seasonal stems, gathered in soft blush tones.", image: "https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=800&q=85", tag: "Bestseller" },
+  { id: 2, name: "Sunday Morning", price: 199, category: "Mixed Bouquets", description: "A generous, sunlit gathering of garden favourites and fresh greenery.", image: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?auto=format&fit=crop&w=800&q=85", tag: "Loved" },
+  { id: 3, name: "Rose Reverie", price: 129, category: "Roses", description: "Velvety pink roses with a quiet, romantic kind of charm.", image: "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=85" },
+  { id: 4, name: "White Romance", price: 179, category: "Lilies", description: "Elegant ivory blooms arranged with graceful, natural movement.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
+  { id: 5, name: "Golden Hour", price: 159, category: "Seasonal Flowers", description: "Warm golden blooms and garden textures for brighter days.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
+  { id: 6, name: "Garden Affair", price: 189, category: "Mixed Bouquets", description: "A just-picked mix inspired by the last flowers of the season.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
+  { id: 7, name: "Softly Yours", price: 139, category: "Tulips", description: "A graceful bundle of fresh tulips in gentle, changing shades.", image: "https://images.unsplash.com/photo-1520637836862-4d197d17c11a?auto=format&fit=crop&w=800&q=85" },
+  { id: 8, name: "Petal & Pearl", price: 169, category: "Flower Boxes", description: "A considered flower-box arrangement, made to make an impression.", image: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=800&q=85" },
+];
+const categories = [
+  { title: "Hand-tied bouquets", note: "Made slowly, by hand", image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=85", to: "/shop" },
+  { title: "Roses, always", note: "A classic, thoughtfully done", image: "https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=900&q=85", to: "/shop?category=Roses" },
+  { title: "In season", note: "The best of right now", image: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=85", to: "/shop?category=Seasonal%20Flowers" },
+  { title: "Flower boxes", note: "A gift to remember", image: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=900&q=85", to: "/shop?category=Flower%20Boxes" },
+];
+export default function Index() {
+  const store = useStore();
+  const cart = store.cart as CartItem[];
+  const [drawer, setDrawer] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+  const count = cart.reduce((n, item) => n + item.quantity, 0);
+  const subtotal = cart.reduce((n, item) => n + item.product.price * item.quantity, 0);
+  const visibleProducts = useMemo(() => products.filter(p => p.name.toLowerCase().includes(query.toLowerCase())), [query]);
+  const add = (product: Product) => { store.add(product); setDrawer(true); };
+  const change = (id: number, amount: number) => store.quantity(id, amount);
+  const image = (src: string, alt: string, className = "") => <img src={src} alt={alt} className={className} loading="lazy" onError={e => { e.currentTarget.src = photos.shop; }} />;
 
-export default Index;
+  const ProductCards = ({ list }: { list: Product[] }) => <div className="product-grid">{list.map((p, i) => <article className="product-card" key={p.id}>
+    <Link to={`/product/${p.id}`} className="product-photo">{image(p.image, `${p.name} flower arrangement`)}{p.tag && <span className="product-tag">{p.tag}</span>}<span className="quick-view">View details <ArrowRight size={14}/></span></Link>
+    <div className="product-info"><div><Link to={`/product/${p.id}`} className="product-name">{p.name}</Link><p className="product-desc">{p.description}</p></div><button className="add-small" aria-label={`Add ${p.name} to cart`} onClick={() => add(p)}><Plus size={17}/></button></div>
+    <div className="product-price">AED {p.price}</div>
+  </article>)}</div>;
+
+  return <div className="site-shell">
+    <div className="announcement">Fresh flowers, thoughtfully arranged <span>·</span> Same-day delivery available</div>
+    <header className="site-header"><button className="mobile-menu-button" onClick={() => setMobileMenu(!mobileMenu)} aria-label="Open navigation">{mobileMenu ? <X/> : <Menu/>}</button><Link to="/" className="wordmark"><span className="logo-flower"><Flower2 size={24}/></span><span>Bloom <i>&</i> Petal</span></Link>
+      <nav className={mobileMenu ? "main-nav is-open" : "main-nav"}><Link to="/">Home</Link><Link to="/shop">Shop</Link><Link to="/shop">Bouquets</Link><Link to="/shop">Flowers</Link><a href="#occasions">Occasions</a><Link to="/about">Our story</Link><Link to="/contact">Contact</Link></nav>
+      <div className="header-actions"><button onClick={() => setSearchOpen(!searchOpen)} aria-label="Search"><Search size={19}/></button><button className="bag-button" onClick={() => setDrawer(true)} aria-label="Shopping bag"><ShoppingBag size={20}/>{count > 0 && <span className="bag-count">{count}</span>}</button></div>
+    </header>
+    {searchOpen && <div className="search-bar"><Search size={17}/><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Find something lovely…"/><button onClick={() => setSearchOpen(false)}><X size={17}/></button>{query && <div className="search-results">{visibleProducts.length ? visibleProducts.slice(0, 5).map(p => <Link key={p.id} to={`/product/${p.id}`} onClick={() => setSearchOpen(false)}>{p.name} <span>AED {p.price}</span></Link>) : <span>No flowers found just yet.</span>}</div>}</div>}
+    <main>
+      <section className="hero"><div className="hero-copy"><span className="eyebrow">A LITTLE BEAUTY, EVERY DAY</span><h1>Flowers that speak<br/>when words aren't<br/><em>enough.</em></h1><p>Thoughtfully arranged blooms, handpicked with love and delivered fresh to your doorstep.</p><div className="hero-buttons"><Link className="button button-dark" to="/shop">Shop bouquets <ArrowRight size={16}/></Link><Link className="text-link" to="/shop">Explore flowers <ArrowRight size={15}/></Link></div><div className="hero-note"><span className="note-rule"/> Arranged fresh, delivered with care</div></div><div className="hero-visual">{image(photos.hero, "Hand-tied bouquet of blush roses, white tulips and fresh greenery", "hero-image")}<span className="image-caption">A little something for someone special</span><span className="hero-index">01 <i>—</i> 04</span></div></section>
+      <section className="category-section section-wrap"><div className="section-heading"><div><span className="eyebrow">FIND YOUR FLOWERS</span><h2>Something for <em>every feeling.</em></h2></div><Link className="text-link" to="/shop">View all flowers <ArrowRight size={15}/></Link></div><div className="category-grid">{categories.map((c, i) => <Link to={c.to} className={`category-card category-${i+1}`} key={c.title}>{image(c.image, `${c.title} flower category`)}<div className="category-copy"><span>{c.note}</span><h3>{c.title}</h3><span className="category-arrow"><ArrowRight size={17}/></span></div></Link>)}</div></section>
+      <section className="bestsellers section-wrap"><div className="section-heading"><div><span className="eyebrow">THE ONES YOU LOVE</span><h2>Our most <em>loved.</em></h2></div><Link className="text-link" to="/shop">Shop all bouquets <ArrowRight size={15}/></Link></div><ProductCards list={products.slice(0, 4)}/></section>
+      <section className="story-section"><div className="story-image">{image(photos.story, "Florist arranging fresh flowers at her worktable")}</div><div className="story-copy"><span className="eyebrow">A FLOWER SHOP, WITH HEART</span><h2>Not just flowers.<br/><em>Little moments</em><br/>of happiness.</h2><p>Every bouquet is thoughtfully designed using fresh, carefully selected flowers. We believe even the smallest gesture deserves something beautiful.</p><Link to="/about" className="button button-outline">A little about us <ArrowRight size={15}/></Link><span className="story-script">Made by hand, with love</span></div></section>
+      <section className="occasion-section section-wrap" id="occasions"><div className="section-heading"><div><span className="eyebrow">FOR ALL OF LIFE'S LITTLE MOMENTS</span><h2>Give them a <em>reason to smile.</em></h2></div></div><div className="occasion-grid">{[{name:"Birthdays",img:"https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=760&q=85"},{name:"Anniversaries",img:"https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=760&q=85"},{name:"Weddings",img:"https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=760&q=85"},{name:"Just because",img:"https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=760&q=85"}].map((x,i)=><Link className="occasion-card" to="/shop" key={x.name}>{image(x.img,`${x.name} flowers`)}<span>0{i+1} / OCCASION</span><h3>{x.name}</h3><ArrowRight size={17}/></Link>)}</div></section>
+      <section className="quote-section"><span className="eyebrow">KIND WORDS, KEPT CLOSE</span><div className="quote-mark">“</div><blockquote>Every detail felt personal. The flowers arrived looking as though they had just been picked from a garden.</blockquote><span className="quote-byline">— A happy customer, Dubai</span><div className="quote-dots"><i/><i className="active"/><i/></div></section>
+      <section className="newsletter"><div><span className="eyebrow">A NOTE FROM THE FLOWER SHOP</span><h2>Let a little beauty<br/>into your <em>inbox.</em></h2></div><form onSubmit={e=>{e.preventDefault();alert("Thank you for joining our little flower note.");}}><label htmlFor="newsletter-email">Occasional notes, fresh flowers, and lovely things.</label><div className="newsletter-input"><input id="newsletter-email" type="email" required placeholder="Your email address"/><button aria-label="Subscribe"><ArrowRight size={18}/></button></div><small>By subscribing, you agree to receive the occasional note from us.</small></form></section>
+    </main>
+    <footer className="site-footer"><div className="footer-main"><div className="footer-brand"><Link to="/" className="wordmark"><span className="logo-flower"><Flower2 size={22}/></span><span>Bloom <i>&</i> Petal</span></Link><p>Flowers for the everyday and the extraordinary. Arranged with care in Dubai.</p><a className="instagram-link" href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={16}/> Find us on Instagram</a></div><div className="footer-links"><div><h4>Explore</h4><Link to="/shop">All flowers</Link><Link to="/shop">Bouquets</Link><Link to="/builder">Build your bouquet</Link><Link to="/shop">Flower boxes</Link></div><div><h4>Here to help</h4><Link to="/delivery">Delivery information</Link><Link to="/track">Track an order</Link><Link to="/contact">Contact us</Link><Link to="/about">Our story</Link></div><div><h4>Say hello</h4><a href="mailto:hello@bloomandpetal.example">hello@bloomandpetal.example</a><span>Dubai, United Arab Emirates</span><Link to="/admin">Shop admin demo</Link></div></div></div><div className="footer-bottom"><span>© 2025 Bloom & Petal. Made with care, in Dubai.</span><span>Thoughtfully arranged, always.</span></div></footer>
+    {drawer && <div className="drawer-backdrop" onClick={()=>setDrawer(false)}><aside className="cart-drawer" onClick={e=>e.stopPropagation()}><div className="drawer-head"><div><span className="eyebrow">YOUR FLOWERS</span><h2>Your bag <span>({count})</span></h2></div><button onClick={()=>setDrawer(false)} aria-label="Close cart"><X/></button></div>{cart.length===0?<div className="empty-cart"><span className="empty-bloom">✳</span><h3>A little space for something lovely.</h3><p>Your bag is waiting for its first bouquet.</p><button className="button button-dark" onClick={()=>{setDrawer(false);navigate('/shop');}}>Explore flowers <ArrowRight size={15}/></button></div>:<><div className="drawer-items">{cart.map(i=><div className="drawer-item" key={i.product.id}>{image(i.product.image,i.product.name)}<div className="drawer-item-copy"><Link to={`/product/${i.product.id}`} onClick={()=>setDrawer(false)}>{i.product.name}</Link><small>{i.size} · AED {i.product.price}</small><div className="quantity-control"><button onClick={()=>change(i.product.id,-1)} aria-label="Decrease quantity"><Minus size={13}/></button><span>{i.quantity}</span><button onClick={()=>change(i.product.id,1)} aria-label="Increase quantity"><Plus size={13}/></button><button className="remove-item" onClick={()=>change(i.product.id,-i.quantity)} aria-label="Remove item"><Trash2 size={14}/></button></div></div><strong>AED {i.product.price*i.quantity}</strong></div>)}</div><div className="drawer-bottom"><div><span>Subtotal</span><strong>AED {subtotal}</strong></div><p>Delivery calculated at checkout.</p><button className="button button-dark checkout-button" onClick={()=>{setDrawer(false);navigate('/checkout');}}>Continue to checkout <ArrowRight size={16}/></button><Link to="/cart" onClick={()=>setDrawer(false)} className="drawer-cart-link">View full bag</Link></div></>}</aside></div>}
+  </div>;
+}

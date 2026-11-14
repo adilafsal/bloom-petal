@@ -5,23 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-
+import Shop from "./pages/Shop";
+import { StoreProvider } from "./store";
+import { Builder, CartPage, Checkout, Confirmation, ProductDetail } from "./pages/Commerce";
+import { About, Admin, Contact, Delivery, Tracking } from "./pages/More";
 const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
+const App = () => <QueryClientProvider client={queryClient}><TooltipProvider><Toaster/><Sonner/><BrowserRouter><StoreProvider><Routes><Route path="/" element={<Index/>}/><Route path="/shop" element={<Shop/>}/><Route path="/product/:id" element={<ProductDetail/>}/><Route path="/builder" element={<Builder/>}/><Route path="/cart" element={<CartPage/>}/><Route path="/checkout" element={<Checkout/>}/><Route path="/confirmation/:ref" element={<Confirmation/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/delivery" element={<Delivery/>}/><Route path="/track" element={<Tracking/>}/><Route path="/admin" element={<Admin/>}/><Route path="*" element={<NotFound/>}/></Routes></StoreProvider></BrowserRouter></TooltipProvider></QueryClientProvider>;
 export default App;
