@@ -89,7 +89,7 @@ export default defineHandler(async event => {
       ORDER BY p.id
       FOR UPDATE OF p
     ), priced AS (
-      SELECT p.id AS product_id, p.name,
+      SELECT p.id AS product_id, COALESCE(r."customName", p.name) AS name,
              CASE WHEN r."customPrice" IS NOT NULL THEN r."customPrice"
                   WHEN r.size = 'Small' THEN GREATEST(COALESCE(p.sale_price, p.price) - 50, 89)
                   WHEN r.size = 'Large' THEN COALESCE(p.sale_price, p.price) + 50
@@ -138,8 +138,7 @@ export default defineHandler(async event => {
     SELECT new_order.id, new_order.order_number AS reference, new_order.total::float AS total FROM new_order
     `;
   } catch (error) {
-    const code = typeof error === "object" && error !== null && "code" in error ? String(error.code) : "unknown";
-    console.error("Order creation database statement failed.", { code });
+    console.error("Order creation database statement failed.", error);
     throw createError({ statusCode: 500, statusMessage: "We couldn't save your order due to a database error. Your cart is unchanged; please try again or contact the shop." });
   }
   if (!rows.length) throw createError({ statusCode: 409, statusMessage: "A product is unavailable or the selected delivery slot just filled. Refresh your bag and choose an available slot." });
