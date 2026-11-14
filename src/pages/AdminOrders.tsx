@@ -108,12 +108,9 @@ export default function AdminOrders() {
     setResendingVerification(true);
     setVerificationNotice("");
     try {
-      const result = await authClient.sendVerificationEmail({ email: user!.email });
-      if (result.error) throw new Error(result.error.message || "The verification email could not be sent.");
       navigate(`/auth/verify-email?email=${encodeURIComponent(user!.email)}&redirectTo=%2Fadmin%2Forders`);
     } catch (failure) {
-      setVerificationNotice(failure instanceof Error ? failure.message : "The verification email could not be sent. Please try again.");
-    } finally {
+      setVerificationNotice(failure instanceof Error ? failure.message : "The verification page could not be opened.");
       setResendingVerification(false);
     }
   }
