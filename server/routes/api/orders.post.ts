@@ -71,7 +71,7 @@ export default defineHandler(async event => {
   });
   const invalidProduct = await sql`SELECT item.ordinality::int AS item_index FROM jsonb_array_elements(${JSON.stringify(normalizedItems)}::jsonb) WITH ORDINALITY AS item(value, ordinality) LEFT JOIN products p ON p.id::text=item.value->>'productId' WHERE item.value->>'customPrice' IS NULL AND (p.id IS NULL OR p.available=false OR (p.stock_quantity IS NOT NULL AND p.stock_quantity < (item.value->>'quantity')::int)) LIMIT 1`;
   if (invalidProduct.length) throw createError({ statusCode: 409, statusMessage: `Product in cart item ${invalidProduct[0].item_index} no longer exists, is unavailable, or has insufficient stock. Refresh your bag.` });
-  if (!delivery.zoneId || !delivery.slotId) throw createError({ statusCode: 400, statusMessage: "Choose an available delivery zone and time slot." });
+  if (!delivery.zoneId || !delivery.slotId || !uuidPattern.test(delivery.zoneId) || !uuidPattern.test(delivery.slotId)) throw createError({ statusCode: 400, statusMessage: "Choose an available delivery area and time slot." });
   const [zoneRows, settingsRows, closedRows, slotRows, subtotalRows] = await Promise.all([
     sql`SELECT id, city, areas, fee::float AS fee, minimum_order::float AS minimum_order FROM delivery_zones WHERE id=${delivery.zoneId} AND enabled=true`,
     sql`SELECT settings FROM store_settings WHERE store_key='delivery'`,
@@ -79,7 +79,7 @@ export default defineHandler(async event => {
     sql`SELECT id, label, max_orders FROM delivery_slots WHERE id=${delivery.slotId} AND enabled=true`,
     sql`WITH requested AS (SELECT * FROM jsonb_to_recordset(${JSON.stringify(normalizedItems)}::jsonb) AS x("productId" text,quantity integer,size text,"customPrice" numeric)) SELECT COALESCE(sum(CASE WHEN "customPrice" IS NOT NULL THEN "customPrice" WHEN size='Small' THEN GREATEST(COALESCE(p.sale_price,p.price)-50,89) WHEN size='Large' THEN COALESCE(p.sale_price,p.price)+50 ELSE COALESCE(p.sale_price,p.price) END * quantity),0)::float AS subtotal FROM requested LEFT JOIN products p ON p.id::text=requested."productId" WHERE "customPrice" IS NOT NULL OR p.id IS NOT NULL`,
   ]);
-  if (!zoneRows.length || zoneRows[0].city.toLowerCase() !== delivery.city!.trim().toLowerCase() || !zoneRows[0].areas.some((area:string)=>area.toLowerCase()===delivery.area!.trim().toLowerCase())) throw createError({ statusCode: 400, statusMessage: "This address is outside the selected delivery zone." });
+  if (!zoneRows.length || zoneRows[0].city.trim().toLowerCase() !== delivery.city!.trim().toLowerCase() || !zoneRows[0].areas.some((area:string)=>area.trim().toLowerCase()===delivery.area!.trim().toLowerCase())) throw createError({ statusCode: 400, statusMessage: `Delivery is unavailable in ${delivery.area.trim()}, ${delivery.city.trim()}. Choose an address in an active delivery area.` });
   const deliverySettings = settingsRows[0]?.settings ?? {};
   if (deliverySettings.deliveryAvailable === false) throw createError({ statusCode: 503, statusMessage: "Delivery is temporarily unavailable." });
   const settingsMinimum = Number(deliverySettings.minimumOrderAmount || 0);
@@ -124,20 +124,24 @@ export default defineHandler(async event => {
       SELECT (SELECT count(*) FROM priced) = ${normalizedItems.length}::bigint
         AND (SELECT count(*) FROM locked_products) = (SELECT count(*) FROM requested_products)
         AND NOT EXISTS (SELECT 1 FROM locked_products WHERE available = false OR (stock_quantity IS NOT NULL AND stock_quantity < quantity)) AS ok
-    ), stock_updates AS (
-      UPDATE products p SET stock_quantity = p.stock_quantity - lp.quantity, updated_at = now()
-      FROM locked_products lp, valid
-      WHERE valid.ok AND p.id = lp.id AND p.stock_quantity IS NOT NULL
-      RETURNING p.id
-    ), inventory_valid AS (
-      SELECT valid.ok AND (SELECT count(*) FROM stock_updates) = (SELECT count(*) FROM locked_products WHERE stock_quantity IS NOT NULL) AS ok
-      FROM valid
     ), slot_reservation AS (
       INSERT INTO delivery_slot_bookings (slot_id, delivery_date, booked)
-      SELECT ${delivery.slotId}::uuid, ${delivery.date}::date, 1 WHERE EXISTS (SELECT 1 FROM inventory_valid WHERE ok)
+      SELECT ${delivery.slotId}::uuid, ${delivery.date}::date, 1
+      WHERE EXISTS (SELECT 1 FROM valid WHERE ok)
+        AND EXISTS (SELECT 1 FROM delivery_slots WHERE id=${delivery.slotId}::uuid AND enabled=true)
+        AND NOT EXISTS (SELECT 1 FROM delivery_closed_dates WHERE closed_date=${delivery.date}::date)
       ON CONFLICT (slot_id, delivery_date) DO UPDATE SET booked=delivery_slot_bookings.booked+1
         WHERE delivery_slot_bookings.booked < (SELECT max_orders FROM delivery_slots WHERE id=${delivery.slotId}::uuid AND enabled=true)
       RETURNING slot_id
+    ), stock_updates AS (
+      UPDATE products p SET stock_quantity = p.stock_quantity - lp.quantity, updated_at = now()
+      FROM locked_products lp, valid
+      WHERE valid.ok AND EXISTS (SELECT 1 FROM slot_reservation) AND p.id = lp.id AND p.stock_quantity IS NOT NULL
+      RETURNING p.id
+    ), inventory_valid AS (
+      SELECT valid.ok AND EXISTS (SELECT 1 FROM slot_reservation)
+        AND (SELECT count(*) FROM stock_updates) = (SELECT count(*) FROM locked_products WHERE stock_quantity IS NOT NULL) AS ok
+      FROM valid
     ), customer_row AS (
       INSERT INTO customers (full_name, email, phone)
       SELECT ${customer.fullName.trim()}, ${customer.email.trim().toLowerCase()}, ${customer.phone.trim()} FROM inventory_valid, slot_reservation WHERE inventory_valid.ok
