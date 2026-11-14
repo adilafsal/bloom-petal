@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, MailCheck } from "lucide-react";
 import AuthShell from "../components/AuthShell";
 import { authClient } from "../lib/auth-client";
-import { emailVerificationCallback, safeAuthRedirect } from "../lib/auth-redirect";
+import { safeAuthRedirect } from "../lib/auth-redirect";
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
     try {
       const result = await authClient.emailOtp.verifyEmail({ email, otp: otp.trim() });
       if (result.error) throw new Error(result.error.message || "Verification failed.");
-      const session = await authClient.getSession();
+      const session = await authClient.getSession({ query: {} });
       if (session.data?.user?.emailVerified) navigate(safeAuthRedirect(params.get("redirectTo")), { replace: true });
       else {
         setMessage("Email verified. Sign in to continue.");
@@ -41,9 +41,9 @@ export default function VerifyEmailPage() {
     setError("");
     setMessage("");
     try {
-      const result = await authClient.sendVerificationEmail({ email, callbackURL: emailVerificationCallback(email, params.get("redirectTo") ?? "/admin/orders") });
+      const result = await authClient.sendVerificationEmail({ email });
       if (result.error) throw new Error(result.error.message || "Could not resend the verification email.");
-      setMessage("Verification email resent. Please check your inbox and spam folder.");
+      setMessage("Verification email resent. Check your inbox for the code, then enter it here.");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : "Could not resend the verification email.");
     } finally {

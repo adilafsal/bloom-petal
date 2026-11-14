@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CalendarDays, Flower2, LayoutDashboard, LoaderCircle, LogOut, Package, Search, Settings, Tags, Truck, Users, X } from "lucide-react";
 import { authClient, useAuthSession } from "../lib/auth-client";
 import { money } from "../store";
-import { emailVerificationCallback } from "../lib/auth-redirect";
 import "../admin-orders.css";
 
 type Order = {
@@ -109,9 +108,9 @@ export default function AdminOrders() {
     setResendingVerification(true);
     setVerificationNotice("");
     try {
-      const result = await authClient.sendVerificationEmail({ email: user!.email, callbackURL: emailVerificationCallback(user!.email, "/admin/orders") });
+      const result = await authClient.sendVerificationEmail({ email: user!.email });
       if (result.error) throw new Error(result.error.message || "The verification email could not be sent.");
-      setVerificationNotice("Verification email sent. Check your inbox and spam folder, then sign in again.");
+      setVerificationNotice("Verification email sent. Check your inbox and spam folder, then enter the verification code.");
     } catch (failure) {
       setVerificationNotice(failure instanceof Error ? failure.message : "The verification email could not be sent. Please try again.");
     } finally {
