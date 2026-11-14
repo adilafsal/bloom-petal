@@ -10,7 +10,7 @@ Configure privately in the server environment (local development: `.env.local`):
 - `NEON_AUTH_BASE_URL` — Neon Auth endpoint from the Neon Console.
 - `NITRO_ADMIN_EMAILS` — comma-separated, verified administrator email addresses.
 
-Enable Neon Auth for the project, create and verify the owner account, and add its exact email to `NITRO_ADMIN_EMAILS`. Unauthorized requests receive 401/403 and cannot query orders. Never commit environment values.
+Enable Neon Auth for the project, create and verify the owner account, and add its exact email to `NITRO_ADMIN_EMAILS`. In Neon Auth's trusted-origin / redirect URL settings, allow each exact storefront origin used by the app: local development origin(s), Dyad preview origin(s), and the production HTTPS origin. The app builds absolute callbacks from the active browser origin, so production does not depend on a hardcoded localhost URL. Add a new preview or production origin in Neon Auth when its hostname changes. Unauthorized requests receive 401/403 and cannot query orders. Never commit environment values.
 
 ## Order email notifications
 

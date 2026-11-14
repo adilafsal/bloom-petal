@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, MailCheck } from "lucide-react";
 import AuthShell from "../components/AuthShell";
 import { authClient } from "../lib/auth-client";
+import { emailVerificationCallback, safeAuthRedirect } from "../lib/auth-redirect";
 
 export default function VerifyEmailPage() {
   const [params] = useSearchParams();
-  const location = useLocation();
   const navigate = useNavigate();
   const email = params.get("email") ?? "";
   const [otp, setOtp] = useState("");
@@ -23,9 +23,10 @@ export default function VerifyEmailPage() {
     try {
       const result = await authClient.emailOtp.verifyEmail({ email, otp: otp.trim() });
       if (result.error) throw new Error(result.error.message || "Verification failed.");
-      if (result.data?.session) navigate("/admin/orders", { replace: true });
+      const session = await authClient.getSession();
+      if (session.data?.user?.emailVerified) navigate(safeAuthRedirect(params.get("redirectTo")), { replace: true });
       else {
-        setMessage("Email verified. You can now sign in.");
+        setMessage("Email verified. Sign in to continue.");
         navigate("/auth/sign-in", { replace: true, state: { verified: true } });
       }
     } catch (failure) {
@@ -40,7 +41,7 @@ export default function VerifyEmailPage() {
     setError("");
     setMessage("");
     try {
-      const result = await authClient.sendVerificationEmail({ email, callbackURL: `${location.pathname}?email=${encodeURIComponent(email)}` });
+      const result = await authClient.sendVerificationEmail({ email, callbackURL: emailVerificationCallback(email, params.get("redirectTo") ?? "/admin/orders") });
       if (result.error) throw new Error(result.error.message || "Could not resend the verification email.");
       setMessage("Verification email resent. Please check your inbox and spam folder.");
     } catch (failure) {

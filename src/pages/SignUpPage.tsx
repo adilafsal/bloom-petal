@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import AuthShell from "../components/AuthShell";
 import { authClient } from "../lib/auth-client";
+import { emailVerificationCallback } from "../lib/auth-redirect";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -17,11 +18,13 @@ export default function SignUpPage() {
     setBusy(true);
     setError("");
     try {
-      const result = await authClient.signUp.email({ name: name.trim(), email: email.trim(), password });
+      const normalizedEmail = email.trim();
+      const callbackURL = emailVerificationCallback(normalizedEmail);
+      const result = await authClient.signUp.email({ name: name.trim(), email: normalizedEmail, password, callbackURL });
       if (result.error) throw new Error(result.error.message || "Sign-up failed.");
       if (result.data?.user) {
         if (result.data.user.emailVerified) navigate("/auth/sign-in", { replace: true });
-        else navigate(`/auth/verify-email?email=${encodeURIComponent(email.trim())}`, { replace: true });
+        else { const verifyURL = new URL(callbackURL); navigate(`${verifyURL.pathname}${verifyURL.search}`, { replace: true }); }
       } else {
         setError("Neon Auth did not confirm the account. Please try again.");
       }
