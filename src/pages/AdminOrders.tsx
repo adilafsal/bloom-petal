@@ -49,9 +49,16 @@ export default function AdminOrders() {
       if (dateFrom) params.set("from", dateFrom);
       if (dateTo) params.set("to", dateTo);
       const response = await fetch(`/api/admin/orders?${params}`, { credentials: "same-origin" });
-      if (response.status === 401) { setOrders([]); navigate("/auth/sign-in", { replace: true }); return; }
+      if (response.status === 401) {
+        setOrders([]);
+        setError("The server could not verify your session. It may have expired or your email may not be verified. Sign out and sign in again.");
+        return;
+      }
       if (response.status === 403) { setAuthorized(false); setOrders([]); return; }
-      if (!response.ok) throw new Error("Couldn't load orders from Neon. Please try again.");
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { statusMessage?: string; message?: string } | null;
+        throw new Error(body?.statusMessage || body?.message || "Couldn't load orders from Neon. Please try again.");
+      }
       const result = await response.json() as OrdersResponse;
       const latestIds = new Set(result.recentIds);
       if (seenOrderIds.current === null) seenOrderIds.current = latestIds;
@@ -98,7 +105,7 @@ export default function AdminOrders() {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.order_number)}`, {
         method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: nextStatus }),
       });
-      if (response.status === 401) { navigate("/auth/sign-in", { replace: true }); return; }
+      if (response.status === 401) throw new Error("Your server session could not be verified. Sign out and sign in again.");
       if (!response.ok) throw new Error(response.status === 403 ? "Administrator access is required." : "Status update failed. Please try again.");
       await loadOrders();
     } catch (e) { setError(e instanceof Error ? e.message : "Status update failed."); }

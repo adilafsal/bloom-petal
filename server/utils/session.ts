@@ -1,4 +1,4 @@
-const neonAuthBaseUrl = process.env.NEON_AUTH_BASE_URL;
+import { neonAuthBaseUrl } from "./auth-config";
 
 function restoreUpstreamCookieName(name: string) {
   if (name.startsWith("__Secure_")) return `__Secure-${name.slice("__Secure_".length)}`;
@@ -33,16 +33,26 @@ export function normalizeAuthCookieHeader(cookieHeader: string, isHttp: boolean)
 
 export type Session = { user: { id: string; name: string; email: string; emailVerified: boolean } } | null;
 
+export class NeonAuthUnavailableError extends Error {
+  constructor() {
+    super("Neon Auth is not configured or is currently unavailable.");
+    this.name = "NeonAuthUnavailableError";
+  }
+}
+
 export async function getSessionFromCookie(cookieHeader: string | null, isHttp: boolean): Promise<Session> {
-  if (!cookieHeader || !neonAuthBaseUrl) return null;
+  if (!neonAuthBaseUrl) throw new NeonAuthUnavailableError();
+  if (!cookieHeader) return null;
   const cookie = normalizeAuthCookieHeader(cookieHeader, isHttp);
   if (!cookie) return null;
+  let response: Response;
   try {
-    const response = await fetch(`${neonAuthBaseUrl}/get-session`, { headers: { cookie } });
-    if (!response.ok) return null;
-    const session = await response.json() as Session;
-    return session?.user ? session : null;
+    response = await fetch(`${neonAuthBaseUrl}/get-session`, { headers: { cookie } });
   } catch {
-    return null;
+    throw new NeonAuthUnavailableError();
   }
+  if (response.status === 401 || response.status === 403) return null;
+  if (!response.ok) throw new NeonAuthUnavailableError();
+  const session = await response.json() as Session;
+  return session?.user ? session : null;
 }

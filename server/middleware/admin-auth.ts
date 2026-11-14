@@ -1,11 +1,19 @@
 import { defineHandler } from "nitro";
 import { createError, getRequestHeader, getRequestURL } from "nitro/h3";
-import { getSessionFromCookie } from "../utils/session";
+import { getSessionFromCookie, NeonAuthUnavailableError, type Session } from "../utils/session";
 
 export default defineHandler(async event => {
   const url = getRequestURL(event);
   if (!url.pathname.startsWith("/api/admin/")) return;
-  const session = await getSessionFromCookie(getRequestHeader(event, "cookie") ?? null, url.protocol === "http:");
+  let session: Session;
+  try {
+    session = await getSessionFromCookie(getRequestHeader(event, "cookie") ?? null, url.protocol === "http:");
+  } catch (error) {
+    if (error instanceof NeonAuthUnavailableError) {
+      throw createError({ statusCode: 503, statusMessage: error.message });
+    }
+    throw error;
+  }
   if (!session?.user || !session.user.emailVerified) {
     throw createError({ statusCode: 401, statusMessage: "A verified administrator session is required." });
   }
