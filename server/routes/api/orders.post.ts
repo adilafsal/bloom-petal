@@ -35,9 +35,9 @@ export default defineHandler(async event => {
     if (!Number.isInteger(item.quantity) || item.quantity! < 1 || item.quantity! > 30) throw createError({ statusCode: 400, statusMessage: "Each product quantity must be a whole number between 1 and 30." });
     if (!item.size || !["Small", "Medium", "Large"].includes(item.size)) throw createError({ statusCode: 400, statusMessage: "Choose a valid size for every bouquet." });
     if (item.customBouquet) {
-      if (!priceCustomBouquet(item)) throw createError({ statusCode: 400, statusMessage: "The custom bouquet details are invalid. Please review your flower, size, colour, wrapping and extras selections." });
-    } else if (!(typeof item.productId === "string" && uuidPattern.test(item.productId)) && !(typeof item.productId === "number" && Number.isSafeInteger(item.productId) && item.productId > 0)) {
-      throw createError({ statusCode: 400, statusMessage: "A product identifier is invalid. Refresh your bag and try again." });
+      if (!priceCustomBouquet(item) || item.customBouquet.size !== item.size) throw createError({ statusCode: 400, statusMessage: "The custom bouquet details are invalid. Please review your flower, size, colour, wrapping and extras selections." });
+    } else if (!(typeof item.productId === "string" && uuidPattern.test(item.productId))) {
+      throw createError({ statusCode: 400, statusMessage: `A product identifier is invalid for cart item ${items.indexOf(item) + 1}. Refresh your bag and try again.` });
     }
   }
   const paymentMethod = body.paymentMethod || "cash_on_delivery";
