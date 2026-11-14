@@ -3,7 +3,7 @@ export function Layout({children}:{children:React.ReactNode}){const {cart,quanti
 export function ProductGrid({products}:{products:Product[]}) {
   const {add}=useStore();
   return <div className="product-grid">{products.map(product=>{
-    const outOfStock=product.stockQuantity===0;
+    const outOfStock=product.available===false||product.stockQuantity===0;
     return <article className="product-card" key={product.id}>
       <Link to={`/product/${product.id}`} className="product-photo">
         <img src={product.image} alt={`${product.name} flower arrangement`} loading="lazy" onError={event=>event.currentTarget.src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=800&q=85"}/>

@@ -31,13 +31,13 @@ export default defineHandler(async event => {
   if (!customer?.fullName?.trim() || !customer.email?.includes("@") || !customer.phone?.trim()) throw createError({ statusCode: 400, statusMessage: "Valid customer details are required." });
   if (!delivery?.address?.trim() || !delivery.city?.trim() || !delivery.area?.trim() || !delivery.date || !delivery.time) throw createError({ statusCode: 400, statusMessage: "Complete delivery information is required." });
   if (!items?.length || items.length > 40) throw createError({ statusCode: 400, statusMessage: "Your order must contain between 1 and 40 items." });
-  for (const item of items) {
-    if (!Number.isInteger(item.quantity) || item.quantity! < 1 || item.quantity! > 30) throw createError({ statusCode: 400, statusMessage: "Each product quantity must be a whole number between 1 and 30." });
-    if (!item.size || !["Small", "Medium", "Large"].includes(item.size)) throw createError({ statusCode: 400, statusMessage: "Choose a valid size for every bouquet." });
+  for (const [index, item] of items.entries()) {
+    if (!Number.isInteger(item.quantity) || item.quantity! < 1 || item.quantity! > 30) throw createError({ statusCode: 400, statusMessage: `Quantity for cart item ${index + 1} must be a whole number between 1 and 30.` });
+    if (!item.size || !["Small", "Medium", "Large"].includes(item.size)) throw createError({ statusCode: 400, statusMessage: `Choose a valid size for cart item ${index + 1}.` });
     if (item.customBouquet) {
-      if (!priceCustomBouquet(item) || item.customBouquet.size !== item.size) throw createError({ statusCode: 400, statusMessage: "The custom bouquet details are invalid. Please review your flower, size, colour, wrapping and extras selections." });
+      if (!priceCustomBouquet(item) || item.customBouquet.size !== item.size) throw createError({ statusCode: 400, statusMessage: `Custom bouquet details for cart item ${index + 1} are invalid. Review its flower, size, colour, wrapping, and extras.` });
     } else if (!(typeof item.productId === "string" && uuidPattern.test(item.productId))) {
-      throw createError({ statusCode: 400, statusMessage: `A product identifier is invalid for cart item ${items.indexOf(item) + 1}. Refresh your bag and try again.` });
+      throw createError({ statusCode: 400, statusMessage: `Product ID for cart item ${index + 1} must be a Neon product UUID. Refresh your bag and try again.` });
     }
   }
   const paymentMethod = body.paymentMethod || "cash_on_delivery";
@@ -48,6 +48,8 @@ export default defineHandler(async event => {
     const custom = item.customBouquet ? priceCustomBouquet(item)! : null;
     return { productId: custom ? null : String(item.productId), quantity: item.quantity, size: custom?.size ?? item.size ?? "Medium", customName: custom?.name ?? null, customPrice: custom?.price ?? null, customization: custom?.details ?? item.customization ?? {} };
   });
+  const invalidProduct = await sql`SELECT item.ordinality::int AS item_index FROM jsonb_array_elements(${JSON.stringify(normalizedItems)}::jsonb) WITH ORDINALITY AS item(value, ordinality) LEFT JOIN products p ON p.id::text=item.value->>'productId' WHERE item.value->>'customPrice' IS NULL AND (p.id IS NULL OR p.available=false OR (p.stock_quantity IS NOT NULL AND p.stock_quantity < (item.value->>'quantity')::int)) LIMIT 1`;
+  if (invalidProduct.length) throw createError({ statusCode: 409, statusMessage: `Product in cart item ${invalidProduct[0].item_index} no longer exists, is unavailable, or has insufficient stock. Refresh your bag.` });
   if (!delivery.zoneId || !delivery.slotId) throw createError({ statusCode: 400, statusMessage: "Choose an available delivery zone and time slot." });
   const [zoneRows, settingsRows, closedRows, slotRows, subtotalRows] = await Promise.all([
     sql`SELECT id, city, areas, fee::float AS fee, minimum_order::float AS minimum_order FROM delivery_zones WHERE id=${delivery.zoneId} AND enabled=true`,
@@ -83,7 +85,7 @@ export default defineHandler(async event => {
       SELECT p.id, p.legacy_id, p.name, p.price, p.sale_price, p.available, p.stock_quantity,
              requested_products."productId", requested_products.quantity
       FROM requested_products JOIN products p
-        ON p.id::text = requested_products."productId" OR p.legacy_id::text = requested_products."productId"
+        ON p.id::text = requested_products."productId"
       ORDER BY p.id
       FOR UPDATE OF p
     ), priced AS (

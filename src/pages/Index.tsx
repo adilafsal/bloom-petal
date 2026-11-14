@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Menu, Search, ShoppingBag, X, Plus, Minus, Trash2, Flower2, Instagram } from "lucide-react";
 import { useStore, type Product } from "../store";
+import { loadProducts } from "../lib/store-api";
 import "../App.css";
 
 type CartItem = { product: Product; quantity: number; size: string };
@@ -11,16 +12,6 @@ const photos = {
   shop: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=85",
   vase: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?auto=format&fit=crop&w=900&q=85",
 };
-const products: Product[] = [
-  { id: 1, name: "The Blush Edit", price: 149, category: "Roses", description: "Garden roses and delicate seasonal stems, gathered in soft blush tones.", image: "https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=800&q=85", tag: "Bestseller" },
-  { id: 2, name: "Sunday Morning", price: 199, category: "Mixed Bouquets", description: "A generous, sunlit gathering of garden favourites and fresh greenery.", image: "https://images.unsplash.com/photo-1525310072745-f49212b5ac6d?auto=format&fit=crop&w=800&q=85", tag: "Loved" },
-  { id: 3, name: "Rose Reverie", price: 129, category: "Roses", description: "Velvety pink roses with a quiet, romantic kind of charm.", image: "https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=800&q=85" },
-  { id: 4, name: "White Romance", price: 179, category: "Lilies", description: "Elegant ivory blooms arranged with graceful, natural movement.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
-  { id: 5, name: "Golden Hour", price: 159, category: "Seasonal Flowers", description: "Warm golden blooms and garden textures for brighter days.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
-  { id: 6, name: "Garden Affair", price: 189, category: "Mixed Bouquets", description: "A just-picked mix inspired by the last flowers of the season.", image: "https://images.unsplash.com/photo-1508610048659-a06b669e3321?auto=format&fit=crop&w=800&q=85" },
-  { id: 7, name: "Softly Yours", price: 139, category: "Tulips", description: "A graceful bundle of fresh tulips in gentle, changing shades.", image: "https://images.unsplash.com/photo-1520637836862-4d197d17c11a?auto=format&fit=crop&w=800&q=85" },
-  { id: 8, name: "Petal & Pearl", price: 169, category: "Flower Boxes", description: "A considered flower-box arrangement, made to make an impression.", image: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?auto=format&fit=crop&w=800&q=85" },
-];
 const categories = [
   { title: "Hand-tied bouquets", note: "Made slowly, by hand", image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=900&q=85", to: "/shop" },
   { title: "Roses, always", note: "A classic, thoughtfully done", image: "https://images.unsplash.com/photo-1494972308805-463bc619d34e?auto=format&fit=crop&w=900&q=85", to: "/shop?category=Roses" },
@@ -29,6 +20,8 @@ const categories = [
 ];
 export default function Index() {
   const store = useStore();
+  const [products,setProducts]=useState<Product[]>([]);
+  useEffect(()=>{let active=true;loadProducts().then(items=>{if(active)setProducts(items.filter(item=>item.available));}).catch(()=>{});return()=>{active=false};},[]);
   const cart = store.cart as CartItem[];
   const [drawer, setDrawer] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -39,7 +32,7 @@ export default function Index() {
   const subtotal = cart.reduce((n, item) => n + item.product.price * item.quantity, 0);
   const visibleProducts = useMemo(() => products.filter(p => p.name.toLowerCase().includes(query.toLowerCase())), [query]);
   const add = (product: Product) => { store.add(product); setDrawer(true); };
-  const change = (id: number, amount: number) => store.quantity(id, amount);
+  const change = (id: string | number, amount: number) => store.quantity(id, amount);
   const image = (src: string, alt: string, className = "") => <img src={src} alt={alt} className={className} loading="lazy" onError={e => { e.currentTarget.src = photos.shop; }} />;
 
   const ProductCards = ({ list }: { list: Product[] }) => <div className="product-grid">{list.map((p, i) => <article className="product-card" key={p.id}>

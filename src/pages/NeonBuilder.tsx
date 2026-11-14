@@ -24,7 +24,7 @@ export default function NeonBuilder() {
   function addToBag() {
     if (!selectedFlowers.length) return;
     const selections = { flowers: selectedFlowers, color, size, wrapping, extras, giftMessage };
-    add({ id: 900000 + Math.floor(Math.random() * 1_000_000_000), name: "Custom bouquet", price: total, category: "Custom bouquet", description: selectedFlowers.join(", "), image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=800&q=85" }, size, JSON.stringify(selections));
+    add({ id: `custom:${crypto.randomUUID()}`, name: "Custom bouquet", price: total, category: "Custom bouquet", description: selectedFlowers.join(", "), image: "https://images.unsplash.com/photo-1520763185298-1b434c919102?auto=format&fit=crop&w=800&q=85" }, size, JSON.stringify(selections));
     setAdded(true);
   }
 

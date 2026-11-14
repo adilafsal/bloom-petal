@@ -9,7 +9,7 @@ export type StoreProduct = Product & {
 };
 export type StoreCategory = { id: string; name: string; description: string | null; imageUrl: string | null; productCount: number };
 export type CustomBouquet = { flowers: string[]; color: string; size: string; wrapping: string; extras: string[]; giftMessage: string };
-export type SubmittedItem = { productId: string | number; quantity: number; size: string; customization: Record<string, unknown> } | { quantity: number; size: string; customBouquet: CustomBouquet };
+export type SubmittedItem = { productId: string; quantity: number; size: string; customization: Record<string, unknown> } | { quantity: number; size: string; customBouquet: CustomBouquet };
 export type PlaceOrderInput = {
   customer: { fullName: string; email: string; phone: string };
   items: SubmittedItem[];
@@ -22,6 +22,7 @@ export type PlaceOrderResult = { reference: string; total: number; checkoutUrl?:
 type ProductApiRecord = {
   id: string;
   database_id: string;
+  legacy_id: number | null;
   name: string;
   short_description: string;
   description: string;
@@ -45,6 +46,7 @@ export async function loadProducts(): Promise<StoreProduct[]> {
   return records.map(product => ({
     id: product.id,
     databaseId: product.database_id,
+    legacyId: product.legacy_id,
     name: product.name,
     shortDescription: product.short_description,
     description: product.description,
@@ -92,15 +94,19 @@ export function giftMessageForOrder(items: Item[], fallback: string) {
 }
 
 export function toServerItems(items: Item[]): SubmittedItem[] {
-  return items.map(item => {
+  return items.map((item, index) => {
     if (item.product.category === "Custom bouquet") {
       try {
         const customBouquet = JSON.parse(item.custom || "") as CustomBouquet;
         return { quantity: item.quantity, size: item.size, customBouquet };
       } catch {
-        throw new Error("Your custom bouquet details are incomplete. Please rebuild it before checkout.");
+        throw new Error(`Custom bouquet in cart item ${index + 1} is incomplete. Please rebuild it before checkout.`);
       }
     }
-    return { productId: item.product.databaseId ?? item.product.id, quantity: item.quantity, size: item.size, customization: item.custom ? { note: item.custom } : {} };
+    const productId = item.product.databaseId ?? item.product.id;
+    if (typeof productId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId)) {
+      throw new Error(`Cart item ${index + 1} no longer has a valid database product ID. Remove it and add the product again.`);
+    }
+    return { productId, quantity: item.quantity, size: item.size, customization: item.custom ? { note: item.custom } : {} };
   });
 }
