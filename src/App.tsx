@@ -15,6 +15,7 @@ import NeonCart from "./pages/NeonCart";
 import NeonBuilder from "./pages/NeonBuilder";
 import PaymentCheckout from "./pages/PaymentCheckout";
 import { NeonConfirmation, NeonProductDetail, NeonShop } from "./pages/StorefrontPages";
+import OrderDetails from "./pages/OrderDetails";
 import { About, Contact, Delivery, Tracking } from "./pages/More";
 
 const queryClient = new QueryClient();
@@ -34,7 +35,8 @@ const App = () => (
               <Route path="/builder" element={<NeonBuilder />} />
               <Route path="/cart" element={<NeonCart />} />
               <Route path="/checkout" element={<PaymentCheckout />} />
-              <Route path="/confirmation/:ref" element={<NeonConfirmation />} />
+              <Route path="/confirmation/:ref" element={<OrderDetails />} />
+              <Route path="/order/:ref" element={<OrderDetails />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/delivery" element={<Delivery />} />

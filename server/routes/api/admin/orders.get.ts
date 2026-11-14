@@ -2,7 +2,7 @@ import { defineHandler } from "nitro";
 import { createError, getQuery } from "nitro/h3";
 import { sql } from "../../../utils/db";
 
-const statuses = ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+const statuses = ["Pending", "Confirmed", "Preparing", "Ready for delivery", "Out for delivery", "Delivered", "Cancelled"];
 const validDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 
 export default defineHandler(async event => {
@@ -28,6 +28,8 @@ export default defineHandler(async event => {
              o.payment_method, o.payment_status,
              CASE WHEN o.status = 'Order Received' THEN 'Pending' ELSE o.status END AS status,
              c.full_name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
+             COALESCE((SELECT jsonb_agg(jsonb_build_object('status', h.status, 'changed_at', h.changed_at) ORDER BY h.changed_at)
+               FROM order_status_history h WHERE h.order_id = o.id), jsonb_build_array(jsonb_build_object('status', 'Pending', 'changed_at', o.created_at))) AS timeline,
              COALESCE(jsonb_agg(jsonb_build_object(
                'product_name', oi.product_name, 'quantity', oi.quantity,
                'unit_price', oi.unit_price::float, 'size', oi.size, 'customization', oi.customization

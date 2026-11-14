@@ -11,10 +11,12 @@ type Order = {
   delivery_date: string; delivery_time: string; gift_message: string; payment_method: string; payment_status: string;
   status: string; customer_name: string; customer_email: string; customer_phone: string;
   products: Array<{ product_name: string; quantity: number; unit_price: number; size: string; customization: Record<string, unknown> }>;
+  timeline?: Array<{ status: string; changed_at: string }>;
 };
 type OrdersResponse = { orders: Order[]; total: number; page: number; pageSize: number; pendingCount: number; recentIds: string[] };
-const statuses = ["All Orders", "Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+const statuses = ["All Orders", "Pending", "Confirmed", "Preparing", "Ready for delivery", "Out for delivery", "Delivered", "Cancelled"];
 const orderStatuses = statuses.slice(1);
+const nextStatuses: Record<string, string[]> = { Pending: ["Confirmed", "Cancelled"], Confirmed: ["Preparing", "Cancelled"], Preparing: ["Ready for delivery", "Cancelled"], "Ready for delivery": ["Out for delivery", "Cancelled"], "Out for delivery": ["Delivered", "Cancelled"], Delivered: [], Cancelled: [] };
 const formatAddress = (address: Order["delivery_address"]) => [address?.address, address?.building, address?.apartment, address?.area, address?.city].filter(Boolean).join(", ");
 const formatPayment = (method: string) => method === "cash_on_delivery" ? "Cash on Delivery" : method === "stripe" ? "Online · Stripe" : method;
 

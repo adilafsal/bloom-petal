@@ -98,11 +98,14 @@ export default defineHandler(async event => {
       INSERT INTO orders (order_number, customer_id, subtotal, delivery_fee, total, delivery_address, delivery_date, delivery_time, gift_message, payment_method, payment_provider, status, payment_status)
       SELECT ${reference}, customer_row.id, totals.subtotal, 25, totals.subtotal + 25, ${JSON.stringify(address)}::jsonb,
         ${delivery.date}::date, ${delivery.time}, ${body.giftMessage?.slice(0, 500) ?? ""}, ${paymentMethod}, ${paymentMethod === "online" ? "stripe" : null},
-        ${paymentMethod === "online" ? "Pending" : "Order Received"}, 'Pending'
+        'Pending', 'Pending'
       FROM customer_row, totals, inventory_valid WHERE inventory_valid.ok RETURNING id, order_number, total
     ), saved_items AS (
       INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, size, customization)
       SELECT new_order.id, priced.product_id, priced.name, priced.quantity, priced.price, priced.size, priced.customization FROM new_order CROSS JOIN priced RETURNING order_id
+    ), initial_history AS (
+      INSERT INTO order_status_history (order_id, status, changed_by)
+      SELECT id, 'Pending', 'system' FROM new_order RETURNING order_id
     )
     SELECT new_order.id, new_order.order_number AS reference, new_order.total::float AS total FROM new_order
     `;
