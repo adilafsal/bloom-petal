@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CalendarDays, Flower2, LayoutDashboard, LoaderCircle, LogOut, Package, Search, Settings, Tags, Truck, Users, X } from "lucide-react";
 import { authClient, useAuthSession } from "../lib/auth-client";
+import { AnimatedNumber } from "../components/motion";
 import { money } from "../store";
 import "../admin-orders.css";
 
@@ -22,7 +26,8 @@ const formatPayment = (method: string) => method === "cash_on_delivery" ? "Cash 
 
 export default function AdminOrders() {
   const { data, isPending } = useAuthSession();
-  const navigate = useNavigate();
+    const reduceMotion = useReducedMotion();
+    const navigate = useNavigate();
   const user = data?.user;
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState("All Orders");
@@ -103,6 +108,20 @@ export default function AdminOrders() {
   const shownFrom = total ? (page - 1) * 20 + 1 : 0;
   const shownTo = Math.min(page * 20, total);
   const stats = useMemo(() => ({ sales: orders.reduce((sum, order) => sum + order.total, 0) }), [orders]);
+    const chartData = useMemo(() => {
+      const days = new Map<string, number>();
+      orders.forEach(order => {
+        const key = order.created_at.slice(0, 10);
+        days.set(key, (days.get(key) || 0) + order.total);
+      });
+      return [...days.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-7)
+        .map(([date, value]) => ({
+          date: new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+          value,
+        }));
+    }, [orders]);
 
   async function resendVerificationEmail() {
     setResendingVerification(true);
@@ -124,10 +143,15 @@ export default function AdminOrders() {
         method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: nextStatus }),
       });
       if (response.status === 401) throw new Error("Your server session could not be verified. Sign out and sign in again.");
-      if (!response.ok) throw new Error(response.status === 403 ? "Administrator access is required." : "Status update failed. Please try again.");
-      await loadOrders();
-    } catch (e) { setError(e instanceof Error ? e.message : "Status update failed."); }
-    finally { setUpdating(false); }
+            if (!response.ok) throw new Error(response.status === 403 ? "Administrator access is required." : "Status update failed. Please try again.");
+            await loadOrders();
+            toast.success(`Order ${order.order_number} marked ${nextStatus}.`);
+          } catch (e) {
+            const message = e instanceof Error ? e.message : "Status update failed.";
+            setError(message);
+            toast.error(message);
+          }
+          finally { setUpdating(false); }
   }
 
   if (isPending || (!user && !authorized)) return <main className="admin-orders-state"><LoaderCircle className="spin"/><p>Checking administrator session…</p></main>;
@@ -137,12 +161,82 @@ export default function AdminOrders() {
   return <div className="admin-app"><aside className={`admin-sidebar ${sidebarOpen?"open":""}`}><Link to="/" className="admin-brand"><Flower2 size={21}/><span>Bloom <i>&</i> Petal</span></Link><div className="admin-sidebar-caption">SHOP MANAGEMENT</div><nav className="admin-sidebar-nav"><Link to="/admin" className="admin-nav-link"><LayoutDashboard size={16}/> Dashboard</Link><Link to="/admin/orders" className="admin-nav-link active"><Package size={16}/> Orders{pendingCount>0&&<span className="admin-nav-badge">{pendingCount}</span>}{newOrderCount>0&&<span className="admin-new-dot" title={`${newOrderCount} new orders`}/>}</Link><Link to="/admin/delivery" className="admin-nav-link"><Truck size={16}/> Delivery</Link><span className="admin-nav-link disabled"><Flower2 size={16}/> Products <small>Later</small></span><span className="admin-nav-link disabled"><Tags size={16}/> Categories <small>Later</small></span><span className="admin-nav-link disabled"><Users size={16}/> Customers <small>Later</small></span><Link to="/admin/delivery" className="admin-nav-link"><Settings size={16}/> Store Settings</Link></nav><div className="admin-sidebar-bottom"><div className="admin-user-info"><span className="admin-user-avatar">{(user.name||user.email).slice(0,1).toUpperCase()}</span><span><strong>{user.name||"Store owner"}</strong><small>{user.email}</small></span></div><button className="admin-logout" onClick={() => authClient.signOut({})}><LogOut size={15}/> Logout</button></div></aside>
     {sidebarOpen&&<button className="admin-mobile-scrim" onClick={()=>setSidebarOpen(false)} aria-label="Close navigation"/>}
     <main className="admin-main"><header className="admin-topbar"><button className="admin-mobile-menu" onClick={()=>setSidebarOpen(!sidebarOpen)} aria-label="Open navigation">☰</button><span>Orders</span><button className="admin-refresh" onClick={()=>void loadOrders()} disabled={loading}><ArrowRight size={14}/> Refresh</button></header><div className="admin-content"><div className="admin-page-title"><div><span className="eyebrow">ORDER MANAGEMENT</span><h1>Customer <em>orders.</em></h1><p>Review, filter and update every order placed through your store.</p></div>{newOrderCount>0&&<button className="new-order-alert" onClick={()=>{setNewOrderCount(0);setPage(1);setStatus("All Orders");setSearch("");setDateFrom("");setDateTo("");void loadOrders(true);}}>✦ {newOrderCount} new {newOrderCount===1?"order":"orders"} <X size={14}/></button>}</div>
-      <div className="admin-metric-row"><div><span>ORDERS MATCHING FILTERS</span><strong>{total}</strong></div><div><span>PENDING ORDERS</span><strong>{pendingCount}</strong></div><div><span>VALUE ON THIS PAGE</span><strong>{money(stats.sales)}</strong></div></div>
+      <div className="admin-metric-row"><div><span>ORDERS MATCHING FILTERS</span><strong><AnimatedNumber value={total} /></strong></div><div><span>PENDING ORDERS</span><strong><AnimatedNumber value={pendingCount} /></strong></div><div><span>VALUE ON THIS PAGE</span><strong><AnimatedNumber value={stats.sales} format={money} /></strong></div></div>
+            {loading ? (
+              <div className="admin-chart-panel admin-chart-loading" aria-hidden="true"><div className="admin-chart-skeleton" /></div>
+            ) : chartData.length > 0 ? (
+              <section className="admin-chart-panel">
+                <div className="admin-panel-heading"><div><h2>Order value</h2><p>Value of orders on this page, by day</p></div><span className="admin-live-indicator"><i /> Live</span></div>
+                <div className="admin-chart-body">
+                  <ResponsiveContainer width="100%" height={210}>
+                    <AreaChart data={chartData} margin={{ top: 8, right: 18, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="adminValueFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#87997f" stopOpacity={0.32} />
+                          <stop offset="100%" stopColor="#87997f" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#eee7de" vertical={false} />
+                                      <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: "#81786e", fontSize: 12 }} dy={6} />
+                                      <Tooltip
+                        cursor={{ stroke: "#c8bcae", strokeDasharray: "4 4" }}
+                        contentStyle={{ border: "1px solid #e6ded4", borderRadius: 8, background: "#fffefa", boxShadow: "0 8px 22px rgba(56,45,42,.1)", fontSize: 13 }}
+                        formatter={(value: number | string) => [money(Number(value)), "Order value"]}
+                      />
+                      <Area type="monotone" dataKey="value" stroke="#455d4a" strokeWidth={2} fill="url(#adminValueFill)" animationDuration={700} isAnimationActive={!reduceMotion} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            ) : null}
       <section className="admin-orders-panel"><div className="admin-panel-heading"><div><h2>Orders</h2><p>Newest orders appear first · refreshed every 15 seconds</p></div><span className="admin-live-indicator"><i/> Live</span></div>
         <div className="admin-filter-row"><div className="admin-status-filters">{statuses.map(item=><button key={item} onClick={()=>{setStatus(item);setPage(1);}} className={status===item?"active":""}>{item}{item==="Pending"&&pendingCount>0&&<b>{pendingCount}</b>}</button>)}</div><div className="admin-search"><Search size={16}/><input placeholder="Order number, customer or phone" value={search} onChange={event=>{setSearch(event.target.value);setPage(1);}}/>{search&&<button onClick={()=>setSearch("")} aria-label="Clear search"><X size={14}/></button>}</div></div>
         <div className="admin-date-filters"><label><CalendarDays size={14}/> From <input type="date" value={dateFrom} onChange={event=>{setDateFrom(event.target.value);setPage(1);}}/></label><label>To <input type="date" value={dateTo} onChange={event=>{setDateTo(event.target.value);setPage(1);}}/></label>{(dateFrom||dateTo)&&<button onClick={()=>{setDateFrom("");setDateTo("");setPage(1);}}>Clear dates</button>}</div>
         {error&&<div className="admin-error" role="alert">{error}<button onClick={()=>void loadOrders()}>Try again</button></div>}
-        {loading?<div className="admin-table-state"><LoaderCircle className="spin"/> Loading orders from Neon…</div>:orders.length===0?<div className="admin-table-state"><Package size={28}/><h3>{search||dateFrom||dateTo||status!=="All Orders"?"No matching orders":"No orders yet"}</h3><p>{search||dateFrom||dateTo||status!=="All Orders"?"Adjust the search or filters and try again.":"New customer orders will appear here as soon as they are placed."}</p></div>:<div className="admin-table-scroll"><table className="admin-orders-table"><thead><tr><th>Order</th><th>Customer</th><th>Order date</th><th>Products</th><th>Total</th><th>Payment</th><th>Payment status</th><th>Order status</th><th/></tr></thead><tbody>{orders.map(order=><tr key={order.id}><td><strong className="order-number">{order.order_number}</strong></td><td><strong>{order.customer_name}</strong><small>{order.customer_phone}</small></td><td>{new Date(order.created_at).toLocaleDateString()}</td><td>{order.products.map(item=>`${item.product_name} × ${item.quantity}`).join(", ")}</td><td><strong>{money(order.total)}</strong></td><td>{formatPayment(order.payment_method)}</td><td><span className={`payment-pill payment-${order.payment_status.toLowerCase().replaceAll(" ","-")}`}>{order.payment_status}</span></td><td><span className={`status-chip status-${order.status.toLowerCase().replaceAll(" ","-")}`}>{order.status}</span></td><td><button className="view-order-button" onClick={()=>setSelected(order)}>View details <ArrowRight size={13}/></button></td></tr>)}</tbody></table></div>}
+        {loading ? (
+                  <div className="admin-skeleton-table" aria-busy="true" aria-label="Loading orders">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <div className="admin-skeleton-row" key={index}><i /><i /><i /><i /><i /></div>
+                    ))}
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="admin-table-state">
+                    <Package size={28} />
+                    <h3>{search || dateFrom || dateTo || status !== "All Orders" ? "No matching orders" : "No orders yet"}</h3>
+                    <p>{search || dateFrom || dateTo || status !== "All Orders" ? "Adjust the search or filters and try again." : "New customer orders will appear here as soon as they are placed."}</p>
+                  </div>
+                ) : (
+                  <div className="admin-table-scroll">
+                    <table className="admin-orders-table">
+                      <thead><tr><th>Order</th><th>Customer</th><th>Order date</th><th>Products</th><th>Total</th><th>Payment</th><th>Payment status</th><th>Order status</th><th /></tr></thead>
+                      <tbody>
+                        {orders.map(order => (
+                          <tr key={order.id}>
+                            <td><strong className="order-number">{order.order_number}</strong></td>
+                            <td><strong>{order.customer_name}</strong><small>{order.customer_phone}</small></td>
+                            <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                            <td>{order.products.map(item => `${item.product_name} × ${item.quantity}`).join(", ")}</td>
+                            <td><strong>{money(order.total)}</strong></td>
+                            <td>{formatPayment(order.payment_method)}</td>
+                            <td><span className={`payment-pill payment-${order.payment_status.toLowerCase().replaceAll(" ", "-")}`}>{order.payment_status}</span></td>
+                            <td>
+                              <motion.span
+                                key={order.status}
+                                className={`status-chip status-${order.status.toLowerCase().replaceAll(" ", "-")}`}
+                                initial={{ opacity: 0, scale: 0.86 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.24, ease: "easeOut" }}
+                              >
+                                {order.status}
+                              </motion.span>
+                            </td>
+                            <td><button className="view-order-button" onClick={() => setSelected(order)}>View details <ArrowRight size={13} /></button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
         <div className="admin-pagination"><span>Showing {shownFrom}–{shownTo} of {total} orders</span><div><button disabled={page<=1||loading} onClick={()=>setPage(current=>Math.max(1,current-1))}>Previous</button><span>Page {page} of {pageCount}</span><button disabled={page>=pageCount||loading} onClick={()=>setPage(current=>Math.min(pageCount,current+1))}>Next</button></div></div>
       </section>
     </div></main>

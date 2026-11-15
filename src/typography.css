@@ -1,0 +1,310 @@
+/* Global type scale — premium readability for storefront and admin */
+:root{--grey:#6f655f;--text-body:16px;--text-small:13px;--text-label:14px;--text-input:16px}
+body{font-size:16px;line-height:1.65}
+.site-shell{font-size:16px}
+
+/* Header and navigation */
+.announcement{font-size:12px;letter-spacing:.09em}
+.wordmark{font-size:24px}
+.main-nav a{font-size:15px;letter-spacing:.005em}
+.search-results a,.search-results>span{font-size:15px}
+.header-actions button{color:#51463f}
+.bag-count{font-size:10px}
+
+/* Shared type */
+.eyebrow{font-size:11px;letter-spacing:.17em;line-height:1.5}
+.button{height:52px;min-height:52px;padding:0 24px;font-size:15px;letter-spacing:.035em}
+.text-link{font-size:14px;letter-spacing:.02em}
+h1,h2,h3,h4{text-wrap:balance}
+p{text-wrap:pretty}
+
+/* Homepage hero */
+.hero h1{font-size:clamp(44px,4.5vw,56px);line-height:1.07}
+.hero-copy>p{max-width:430px;font-size:17px;line-height:1.8}
+.hero-note{font-size:14px}
+.image-caption{font-size:15px}
+.hero-index{font-size:11px}
+.hero-buttons{gap:22px}
+
+/* Homepage sections */
+.section-heading h2,.newsletter h2{font-size:clamp(30px,3vw,36px);line-height:1.18}
+.category-copy>span:first-child{font-size:10px;letter-spacing:.11em}
+.category-copy h3{font-size:23px}
+.product-name{font-size:19px;line-height:1.35}
+.product-desc{font-size:14px;line-height:1.65}
+.product-price{font-size:19px}
+.product-price del{margin-left:7px;font-size:14px;color:#9a8d85}
+.product-tag{font-size:10px;letter-spacing:.09em}
+.quick-view{font-size:12px;letter-spacing:.08em}
+.story-copy h2{font-size:clamp(36px,3.7vw,48px)}
+.story-copy p{font-size:16px;line-height:1.85}
+.story-script{font-size:16px}
+.occasion-card>span{font-size:10px}
+.occasion-card h3{font-size:23px}
+.quote-section blockquote{font-size:26px;line-height:1.65}
+.quote-byline{font-size:11px;letter-spacing:.12em}
+.newsletter label{font-size:15px}
+.newsletter-input input{font-size:16px}
+.newsletter small{font-size:13px;line-height:1.55}
+.footer-brand p{font-size:16px;line-height:1.7}
+.footer-links h4{font-size:11px}
+.footer-links a,.footer-links span{font-size:14px;line-height:1.55}
+.footer-bottom{font-size:12px}
+.instagram-link{font-size:13px}
+
+/* Cart drawer */
+.drawer-head h2{font-size:30px}
+.drawer-head h2 span{font-size:15px}
+.drawer-item-copy>a{font-size:19px}
+.drawer-item-copy small{font-size:14px;line-height:1.5}
+.drawer-item>strong{font-size:16px}
+.quantity-control span{font-size:15px}
+.drawer-bottom>div{font-size:16px}
+.drawer-bottom>div strong{font-size:18px}
+.drawer-bottom p{font-size:13px}
+.drawer-cart-link{font-size:14px}
+.empty-cart h3{font-size:26px}
+.empty-cart p{font-size:16px;line-height:1.65}
+
+/* Catalogue and editorial pages */
+.catalog-hero h1,.simple-page>h1,.admin-banner h1{font-size:clamp(42px,4.6vw,54px);line-height:1.12}
+.catalog-hero p{font-size:16px;line-height:1.75;max-width:560px}
+.catalog-tools{gap:24px}
+.filter-tabs button{min-height:42px;padding:0 16px;font-size:14px}
+.catalog-controls label{min-height:42px}
+.catalog-controls input,.catalog-controls select{font-size:15px;max-width:170px}
+.catalog-count{font-size:13px}
+.builder-promo h2{font-size:34px}
+.builder-promo p{font-size:16px;line-height:1.6}
+.no-products h2{font-size:28px}
+.no-products p{font-size:16px}
+.breadcrumbs{font-size:13px}
+
+/* Product detail */
+.detail-copy h1{font-size:clamp(40px,4.2vw,52px);line-height:1.12}
+.detail-price{font-size:20px}
+.detail-price del{margin-left:9px;font-size:15px}
+.detail-copy>p{font-size:16px;line-height:1.85}
+.detail-copy h3{font-size:19px}
+.size-options button span{font-size:16px}
+.size-options button small{font-size:14px}
+.care-note{font-size:14px;line-height:1.9}
+.detail-copy details{font-size:14px}
+.detail-copy details p{font-size:14px;line-height:1.7}
+.stock-note{font-size:14px}
+.related-products{padding-top:84px}
+
+/* Forms and labels */
+.field-label,.contact-grid form label,.checkout-fields label,.admin-products label,.delivery-card label,.order-status-control{font-size:15px;line-height:1.45}
+.field-label input,.field-label textarea,.contact-grid input,.contact-grid textarea,.contact-grid select,.checkout-fields input,.checkout-fields textarea,.checkout-fields select,.builder-form select,.builder-form textarea,.tracking-page input,.admin-products input,.delivery-card input,.order-status-control select{min-height:48px;padding:12px 14px;font-size:16px;line-height:1.45}
+.field-label textarea,.contact-grid textarea,.checkout-fields textarea,.builder-form textarea{min-height:118px}
+.checkout-fields label small,.field-label small{font-size:13px}
+
+/* Builder */
+.builder-form h2,.checkout-fields h2{font-size:26px;line-height:1.25}
+.builder-form section p{font-size:15px;line-height:1.65}
+.choice{min-height:44px;padding:0 16px;font-size:14px}
+.builder-extras label,.checkbox-label{font-size:14px}
+.builder-summary h2,.order-summary h2{font-size:28px}
+.builder-summary>p{font-size:14px;line-height:1.6}
+.builder-summary dl div,.builder-total,.order-summary>div{font-size:15px}
+.builder-total strong{font-size:20px}
+.validation-note,.demo-disclosure{font-size:13px;line-height:1.65}
+.builder-progress-copy{font-size:12px}
+.builder-progress-copy strong{font-size:13px}
+
+/* Cart page */
+.simple-page>p{font-size:16px;line-height:1.85}
+.cart-line h3{font-size:20px}
+.cart-line p{font-size:14px;line-height:1.6}
+.cart-line>strong{font-size:17px}
+.order-summary .summary-product{font-size:14px!important}
+.order-summary .summary-total{font-size:17px}
+.order-summary .summary-total strong{font-size:21px}
+.checkout-button{font-size:15px;min-height:52px}
+
+/* Checkout */
+.payment-method-options strong{font-size:16px}
+.payment-method-options small{font-size:14px;line-height:1.5}
+.payment-honest{font-size:14px;line-height:1.7}
+.delivery-address-status{font-size:14px;line-height:1.6}
+.selected-address-note{font-size:14px}
+.address-subtitle{font-size:15px}
+.checkout-area-option span{font-size:15px}
+.checkout-area-option small{font-size:13px}
+.saved-address-card strong{font-size:16px}
+.saved-address-card span,.saved-address-card small{font-size:14px}
+.address-actions button{font-size:13px}
+
+/* Confirmation and tracking */
+.confirmation h1{font-size:clamp(40px,4.6vw,50px)}
+.confirmation>p{font-size:16px;line-height:1.8}
+.reference-box span{font-size:11px}
+.reference-box strong{font-size:18px}
+.tracking-page form label{font-size:15px}
+.tracking-result h2{font-size:29px}
+.tracking-result>p{font-size:15px}
+.status-step{font-size:12px;line-height:1.4}
+.tracking-error{font-size:14px;line-height:1.6}
+
+/* Story, contact and delivery pages */
+.story-feature h2,.contact-grid h2{font-size:clamp(34px,3.6vw,44px)}
+.story-feature p{font-size:16px;line-height:1.85}
+.about-values span{font-size:11px}
+.about-values h3{font-size:23px}
+.about-values p{font-size:15px;line-height:1.75}
+.contact-grid aside>p{font-size:16px;line-height:1.8}
+.contact-grid aside>div{font-size:14px}
+.contact-grid aside>div strong{font-size:11px}
+.contact-grid aside small{font-size:13px}
+.delivery-cards h2{font-size:24px}
+.delivery-cards p{font-size:15px;line-height:1.75}
+.delivery-cards section>span{font-size:19px}
+.empty-page h1{font-size:42px}
+.empty-page p{font-size:16px}
+
+/* Authentication */
+.auth-intro{font-size:16px}
+.auth-card label{font-size:15px}
+.auth-card input{min-height:48px;font-size:16px}
+.auth-card button[type=submit],.auth-card form button{font-size:14px;min-height:50px;letter-spacing:.05em}
+.auth-card a{font-size:14px}
+.auth-card p{font-size:15px;line-height:1.65}
+.auth-back{font-size:14px}
+.auth-card h1{font-size:30px}
+.auth-verification-address{font-size:15px}
+.auth-form-error{font-size:14px}
+.auth-form-success{font-size:14px}
+.auth-code-note{font-size:13px}
+.auth-visual p{font-size:clamp(34px,3.8vw,48px)}
+
+/* Admin dashboard */
+.admin-app{font-size:15px}
+.admin-brand{font-size:25px}
+.admin-sidebar-caption{font-size:11px;letter-spacing:.15em}
+.admin-nav-link{min-height:48px;font-size:15px}
+.admin-nav-link.disabled small{font-size:11px}
+.admin-nav-badge{font-size:11px}
+.admin-user-info strong{font-size:14px}
+.admin-user-info small{font-size:12px}
+.admin-logout{font-size:14px}
+.admin-topbar{font-size:14px}
+.admin-refresh{font-size:14px;min-height:40px}
+.admin-page-title .eyebrow,.order-drawer-header .eyebrow{font-size:11px}
+.admin-page-title h1{font-size:clamp(36px,3.4vw,44px)}
+.admin-page-title p{font-size:14px;line-height:1.65}
+.new-order-alert{font-size:13px}
+.admin-metric-row span{font-size:11px;letter-spacing:.1em}
+.admin-metric-row strong{font-size:34px}
+.admin-panel-heading h2{font-size:26px}
+.admin-panel-heading p{font-size:13px;line-height:1.55}
+.admin-live-indicator{font-size:11px}
+.admin-status-filters button{min-height:38px;font-size:13px}
+.admin-status-filters b{font-size:10px}
+.admin-search{min-height:44px}
+.admin-search input{font-size:16px}
+.admin-date-filters label{font-size:14px}
+.admin-date-filters input{font-size:16px;min-height:40px}
+.admin-date-filters button{font-size:13px}
+.admin-orders-table th{font-size:12px;letter-spacing:.04em}
+.admin-orders-table td{font-size:14px;line-height:1.55;padding-top:18px;padding-bottom:18px}
+.admin-orders-table td>strong{font-size:14px}
+.admin-orders-table td>small{font-size:13px}
+.status-chip,.payment-pill{min-height:28px;padding:5px 10px;font-size:12px}
+.view-order-button{min-height:38px;padding:0 12px;font-size:13px}
+.admin-pagination{font-size:13px}
+.admin-pagination button{font-size:13px}
+.admin-table-state{font-size:15px}
+.admin-table-state h3{font-size:24px}
+.admin-table-state p{font-size:14px}
+.admin-error{font-size:14px}
+.order-drawer-header h2{font-size:32px}
+.order-drawer-header small{font-size:13px}
+.order-status-control{font-size:14px}
+.order-detail-section{font-size:15px;line-height:1.65}
+.order-detail-section h3{font-size:21px}
+.order-detail-product strong{font-size:15px}
+.order-detail-product small{font-size:14px}
+.order-detail-product>span{font-size:15px}
+.detail-pair,.order-totals>div{font-size:14px}
+.order-totals .final-total{font-size:17px}
+.order-totals .final-total strong{font-size:18px}
+.admin-orders-state h1{font-size:42px}
+.admin-orders-state>p{font-size:16px;line-height:1.7}
+.delivery-card h2{font-size:26px}
+.delivery-card p{font-size:14px;line-height:1.65}
+.delivery-card label{font-size:14px}
+.delivery-card input{font-size:16px}
+.delivery-card button:not(.button){min-height:40px;font-size:13px}
+.delivery-tabs button{font-size:14px}
+.delivery-form>.button{font-size:14px}
+
+/* Responsive refinements */
+@media(max-width:1000px){
+  .main-nav a{font-size:15px}
+  .hero h1{font-size:clamp(42px,5vw,50px)}
+  .hero-copy>p{font-size:16px}
+  .admin-orders-table th{font-size:12px}
+}
+
+@media(max-width:760px){
+  .announcement{font-size:10px}
+  .wordmark{font-size:22px}
+  .hero h1{font-size:clamp(35px,9vw,42px);line-height:1.1}
+  .hero-copy>p{font-size:16px;line-height:1.75}
+  .hero-note{font-size:13px}
+  .image-caption{font-size:13px}
+  .section-heading h2,.newsletter h2{font-size:30px}
+  .category-copy h3{font-size:20px}
+  .product-name{font-size:18px}
+  .product-desc{font-size:13px}
+  .product-price{font-size:18px}
+  .product-tag{font-size:9px}
+  .quick-view{font-size:11px}
+  .story-copy h2{font-size:34px}
+  .story-copy p{font-size:15px}
+  .occasion-card h3{font-size:20px}
+  .quote-section blockquote{font-size:21px;line-height:1.6}
+  .newsletter label{font-size:15px}
+  .footer-links a,.footer-links span{font-size:14px}
+  .footer-bottom{font-size:11px}
+  .footer-brand p{font-size:15px}
+  .drawer-head h2{font-size:27px}
+  .drawer-item-copy>a{font-size:17px}
+  .drawer-item-copy small{font-size:13px}
+  .empty-cart h3{font-size:23px}
+  .empty-cart p{font-size:15px}
+  .catalog-hero h1,.simple-page>h1{font-size:clamp(36px,8.8vw,42px)}
+  .catalog-hero p{font-size:15px}
+  .builder-promo h2{font-size:30px}
+  .builder-form h2,.checkout-fields h2{font-size:23px}
+  .choice{font-size:13px}
+  .builder-summary h2,.order-summary h2{font-size:25px}
+  .detail-copy h1{font-size:36px}
+  .detail-copy>p{font-size:15px}
+  .cart-line h3{font-size:18px}
+  .cart-line p{font-size:13px}
+  .cart-line>strong{font-size:15px}
+  .confirmation h1{font-size:37px}
+  .confirmation>p{font-size:15px}
+  .auth-intro{font-size:15px}
+  .auth-card label{font-size:15px}
+  .auth-card input{font-size:16px}
+  .admin-page-title h1{font-size:34px}
+  .admin-page-title p{font-size:13px}
+  .admin-metric-row strong{font-size:30px}
+  .admin-orders-table td,.admin-orders-table td>strong{font-size:14px}
+  .admin-orders-table td>small{font-size:12px}
+  .status-chip,.payment-pill{font-size:11px}
+  .admin-panel-heading h2{font-size:23px}
+  .admin-status-filters button{font-size:12px}
+  .delivery-card h2{font-size:23px}
+}
+
+@media(max-width:390px){
+  .hero h1{font-size:36px}
+  .button{font-size:14px;padding:0 18px}
+  .product-name{font-size:17px}
+  .cart-line h3{font-size:17px}
+  .catalog-hero h1,.simple-page>h1{font-size:36px}
+}

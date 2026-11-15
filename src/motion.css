@@ -1,0 +1,137 @@
+/* Motion system: route transitions, storefront reveals and micro-interactions */
+html{scroll-behavior:auto}
+.route-frame{min-height:100vh}
+.route-frame:after{content:"";display:block;clear:both}
+
+/* Header navigation */
+.main-nav a{position:relative}
+.main-nav a:after{position:absolute;right:0;bottom:-7px;left:0;height:1px;background:var(--rose);content:"";transform:scaleX(0);transform-origin:right;transition:transform .28s cubic-bezier(.22,1,.36,1)}
+.main-nav a:hover:after,.main-nav a:focus-visible:after{transform:scaleX(1);transform-origin:left}
+.main-nav.is-open{animation:nav-drop .24s cubic-bezier(.22,1,.36,1)}
+@keyframes nav-drop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+
+/* Homepage hero */
+.hero-visual{overflow:visible}
+.hero-parallax{position:absolute;inset:0;overflow:hidden;will-change:transform;animation:hero-reveal .95s cubic-bezier(.22,1,.36,1) both}
+.hero-parallax .hero-image{width:100%;height:100%}
+.hero-zoom{animation:hero-zoom 22s ease-in-out infinite alternate;transform-origin:center 52%}
+.hero-line{display:block;animation:hero-line .9s cubic-bezier(.22,1,.36,1) both}
+.hero-fade{animation:hero-fade .8s cubic-bezier(.22,1,.36,1) both}
+.hero-visual .image-caption{animation:hero-fade .7s .5s cubic-bezier(.22,1,.36,1) both}
+.hero-visual .hero-index{animation:hero-fade .7s .65s cubic-bezier(.22,1,.36,1) both}
+@keyframes hero-reveal{from{opacity:.25;clip-path:inset(0 0 100% 0)}to{opacity:1;clip-path:inset(0)}}
+@keyframes hero-zoom{from{transform:scale(1)}to{transform:scale(1.075)}}
+@keyframes hero-line{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+@keyframes hero-fade{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* Product cards */
+.product-card{position:relative;transition:box-shadow .35s ease}
+.product-card:hover{box-shadow:0 18px 36px rgba(56,45,42,.09)}
+.product-photo{transition:box-shadow .35s ease}
+.product-card:hover .product-photo{box-shadow:inset 0 0 0 1px rgba(56,45,42,.08)}
+.favorite-button{position:absolute;z-index:4;top:12px;right:12px;display:grid;place-items:center;width:37px;height:37px;padding:0;border:1px solid rgba(255,255,255,.5);border-radius:50%;background:rgba(250,247,242,.9);color:#6f625a;cursor:pointer;opacity:0;transform:translateY(-4px);transition:opacity .22s ease,transform .22s ease,background .2s ease,color .2s ease;backdrop-filter:blur(4px)}
+.product-card:hover .favorite-button,.favorite-button:focus-visible,.favorite-button.active{opacity:1;transform:none}
+.favorite-button:hover{background:#fffdf9;color:var(--rose)}
+.favorite-button.active{color:var(--rose);border-color:#e7c9cb}
+.add-small{position:relative;overflow:hidden}
+.add-small.is-added{background:var(--forest);border-color:var(--forest);color:#fff}
+.add-small span{display:grid;place-items:center}
+.product-card:hover .product-name{color:var(--rose)}
+
+/* Search and drawer motion is owned by Framer Motion */
+.search-bar{transform-origin:top}
+.cart-drawer{animation:none!important}
+.drawer-backdrop{animation:none!important}
+.drawer-item>img{transition:transform .4s ease}
+.drawer-item:hover>img{transform:scale(1.035)}
+
+/* Bouquet builder */
+.builder-progress{display:grid;gap:10px;margin:0 0 6px;padding:18px 0 8px}
+.builder-progress-copy{display:flex;align-items:center;justify-content:space-between;gap:16px;color:#6e645b;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.builder-progress-copy strong{color:var(--forest);font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:none}
+.builder-progress-track{height:4px;overflow:hidden;border-radius:999px;background:#e6ddd3}
+.builder-progress-track span{display:block;height:100%;border-radius:inherit;background:var(--forest)}
+.choice{position:relative;display:inline-flex;align-items:center;gap:6px}
+.choice-check{display:inline-grid;place-items:center;color:var(--forest)}
+.choice.selected{border-color:var(--forest);background:#edf0e9;color:var(--forest)}
+.builder-form>section{transition:border-color .25s ease}
+.builder-bouquet{position:relative;overflow:hidden}
+.builder-bouquet>span{position:absolute;bottom:11px;left:0;right:0;color:#867a70;font:12px var(--sans,sans-serif);letter-spacing:.05em}
+.builder-summary .builder-total strong{font-variant-numeric:tabular-nums}
+.builder-summary .checkout-button{transition:background .22s ease,transform .22s ease}
+
+/* Checkout and account */
+.checkout-fields>section{animation:block-rise .48s cubic-bezier(.22,1,.36,1) both}
+.checkout-fields>section:nth-child(2){animation-delay:.05s}
+.checkout-fields>section:nth-child(3){animation-delay:.1s}
+.checkout-fields>section:nth-child(4){animation-delay:.15s}
+.order-summary{animation:block-rise .5s .08s cubic-bezier(.22,1,.36,1) both}
+@keyframes block-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.tracking-error,.address-feedback,.delivery-address-status{animation:soft-note .26s ease both}
+@keyframes soft-note{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.field-label input,.field-label textarea,.checkout-fields input,.checkout-fields textarea,.checkout-fields select,.contact-grid input,.contact-grid textarea,.contact-grid select,.builder-form select,.tracking-page input,.auth-card input{transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.checkout-fields label:focus-within,.contact-grid label:focus-within,.field-label:focus-within{color:var(--forest)}
+.confirm-icon{animation:confirm-pop .7s cubic-bezier(.22,1,.36,1) both}
+.confirm-icon svg{animation:confirm-check .5s .18s cubic-bezier(.22,1,.36,1) both}
+@keyframes confirm-pop{0%{opacity:0;transform:scale(.72)}60%{transform:scale(1.08)}100%{opacity:1;transform:scale(1)}}
+@keyframes confirm-check{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+
+/* Product detail and editorial pages */
+.detail-image{overflow:hidden;animation:image-reveal .8s cubic-bezier(.22,1,.36,1) both}
+.detail-image img{animation:detail-zoom 14s ease-in-out infinite alternate}
+@keyframes image-reveal{from{opacity:.2;clip-path:inset(0 0 100% 0)}to{opacity:1;clip-path:inset(0)}}
+@keyframes detail-zoom{from{transform:scale(1)}to{transform:scale(1.045)}}
+.story-feature img,.about-values>div,.delivery-cards section{transition:transform .35s ease,box-shadow .35s ease}
+.story-feature img:hover{transform:translateY(-3px)}
+.about-values>div:hover,.delivery-cards section:hover{transform:translateY(-3px)}
+
+/* Admin dashboard */
+.admin-chart-panel{overflow:hidden;margin:0 0 18px;border:1px solid var(--admin-line,#e8e1d8);border-radius:11px;background:#fffefa;box-shadow:0 7px 24px #3e30200a;animation:block-rise .4s cubic-bezier(.22,1,.36,1) both}
+.admin-chart-body{padding:0 18px 12px}
+.admin-chart-loading{height:262px;display:grid;place-items:center;padding:20px}
+.admin-chart-skeleton{width:100%;height:205px;border-radius:8px;background:linear-gradient(90deg,#f0ebe4 25%,#f8f5f0 42%,#f0ebe4 62%);background-size:300% 100%;animation:skeleton-shimmer 1.25s ease-in-out infinite}
+.admin-chart-panel .recharts-surface{overflow:visible}
+.admin-chart-panel .admin-panel-heading{padding-bottom:8px}
+.admin-skeleton-table{display:grid;gap:1px;border-top:1px solid var(--admin-line);background:#f4f0ea}
+.admin-skeleton-row{display:grid;grid-template-columns:1.1fr 1.4fr 1fr 1.6fr .8fr;gap:16px;padding:18px 25px;background:#fffefa}
+.admin-skeleton-row i{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,#f0ebe4 25%,#f8f5f0 42%,#f0ebe4 62%);background-size:300% 100%;animation:skeleton-shimmer 1.25s ease-in-out infinite}
+.admin-skeleton-row i:nth-child(2){width:88%}
+.admin-skeleton-row i:nth-child(3){width:70%}
+.admin-skeleton-row i:nth-child(4){width:92%}
+.admin-skeleton-row i:nth-child(5){width:62%}
+@keyframes skeleton-shimmer{from{background-position:100% 0}to{background-position:0 0}}
+.admin-content>section,.admin-content>.delivery-card{animation:block-rise .4s cubic-bezier(.22,1,.36,1) both}
+.admin-orders-table tbody tr{transition:background .18s ease,box-shadow .18s ease}
+.admin-orders-table tbody tr:hover{box-shadow:inset 3px 0 #dfb6a7}
+.admin-nav-link{overflow:hidden}
+.admin-nav-link:before{position:absolute;top:9px;bottom:9px;left:0;width:2px;border-radius:2px;background:#dfb6a7;content:"";transform:scaleY(0);transition:transform .22s ease}
+.admin-nav-link:hover:before,.admin-nav-link.active:before{transform:scaleY(1)}
+.admin-sidebar.open{animation:admin-side-in .25s cubic-bezier(.22,1,.36,1)}
+@keyframes admin-side-in{from{transform:translateX(-100%)}to{transform:none}}
+.admin-metric-row strong{font-variant-numeric:tabular-nums}
+.delivery-card{animation:block-rise .38s cubic-bezier(.22,1,.36,1) both}
+.order-detail-backdrop{backdrop-filter:blur(2px)}
+.order-detail-backdrop .order-detail-drawer{animation:admin-drawer-in .28s cubic-bezier(.22,1,.36,1)}
+.order-detail-section{animation:soft-note .32s ease both}
+
+/* Mobile menu */
+@media(max-width:1000px){
+  .main-nav{display:none;position:absolute;top:84px;right:0;left:0;margin:0;padding:18px 6% 24px;border-bottom:1px solid var(--line);background:var(--ivory);box-shadow:0 18px 30px rgba(56,45,42,.08);flex-direction:column;align-items:stretch;gap:0}
+  .main-nav.is-open{display:flex}
+  .main-nav a{padding:13px 0;border-bottom:1px solid #e9e1d8;font-size:15px}
+  .main-nav a:after{display:none}
+  .main-nav a:last-child{border-bottom:0}
+  .mobile-menu-button{display:flex;align-items:center;justify-content:center;min-width:38px;min-height:38px;border-radius:50%}
+}
+@media(max-width:760px){
+  .main-nav{top:68px}
+  .favorite-button{opacity:1;transform:none}
+  .admin-skeleton-row{grid-template-columns:1fr 1fr;padding:16px}
+  .admin-skeleton-row i:nth-child(n+3){display:none}
+}
+@media(max-width:390px){.product-card:hover{box-shadow:none}}
+
+@media(prefers-reduced-motion:reduce){
+  .hero-parallax,.hero-line,.hero-fade,.hero-visual .image-caption,.hero-visual .hero-index,.hero-zoom,.detail-image,.detail-image img,.checkout-fields>section,.order-summary,.admin-skeleton-row i,.admin-chart-panel,.admin-chart-skeleton,.admin-content>section,.admin-content>.delivery-card,.delivery-card,.confirm-icon,.confirm-icon svg,.tracking-error,.address-feedback,.delivery-address-status,.main-nav.is-open{animation:none!important}
+  .product-card,.product-photo,.favorite-button,.add-small,.story-feature img,.about-values>div,.delivery-cards section,.main-nav a:after{transition:none!important}
+}
